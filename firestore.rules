@@ -1,0 +1,186 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches auth.uid)
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - name: string (required)
+    //   - email: string (required, immutable)
+    //   - role: string (required, enum: 'admin', 'editor', 'viewer')
+    //   - programs: list (optional)
+    //   - grades: list (optional)
+    //   - isActive: boolean (required)
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: orders
+    // Document ID: {orderId}
+    // Fields:
+    //   - id: string (required, immutable)
+    //   - name: string (required)
+    //   - program: string (optional)
+    //   - grade: string (optional)
+    //   - academicYear: string (optional)
+    //   - schoolName: string (optional)
+    //   - books: string (optional)
+    //   - customSubjects: string (optional)
+    //   - createdBy: string (required, immutable)
+    //   - createdAt: string (required, immutable)
+    //   - updatedAt: string (required)
+    //
+    // Collection: audit_logs
+    // Document ID: {logId}
+    // Fields:
+    //   - action: string (required)
+    //   - userId: string (required, immutable)
+    //   - details: string (optional)
+    //   - timestamp: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isBootstrapAdmin() {
+      return isAuthenticated() && request.auth.token.email == "ahmed.g.lotfy76@gmail.com" && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (isAuthenticated() && getUserData().role == 'admin' && getUserData().isActive == true);
+    }
+
+    function isEditor() {
+      return isAuthenticated() && getUserData().role == 'editor' && getUserData().isActive == true;
+    }
+
+    function isViewer() {
+      return isAuthenticated() && getUserData().role == 'viewer' && getUserData().isActive == true;
+    }
+
+    function isActiveUser() {
+      return isAdmin() || isEditor() || isViewer();
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'name', 'email', 'role', 'isActive', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'editor', 'viewer'] &&
+             data.isActive is bool &&
+             isValidDateString(data.createdAt) &&
+             (!('programs' in data) || (data.programs is list && data.programs.size() <= 10)) &&
+             (!('grades' in data) || (data.grades is list && data.grades.size() <= 30));
+    }
+
+    function isValidOrder(data) {
+      return hasRequiredFields(['id', 'name', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() < 128 &&
+             isValidDateString(data.createdAt) &&
+             isValidDateString(data.updatedAt) &&
+             (!('program' in data) || (data.program is string && data.program.size() <= 50)) &&
+             (!('grade' in data) || (data.grade is string && data.grade.size() <= 50)) &&
+             (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 50)) &&
+             (!('schoolName' in data) || (data.schoolName is string && data.schoolName.size() <= 200)) &&
+             (!('books' in data) || (data.books is string && data.books.size() <= 1000000)) && // 1MB limit for JSON string
+             (!('customSubjects' in data) || (data.customSubjects is string && data.customSubjects.size() <= 50000));
+    }
+
+    function isValidAuditLog(data) {
+      return hasRequiredFields(['action', 'userId', 'timestamp']) &&
+             data.action is string && data.action.size() > 0 && data.action.size() < 200 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+             isValidDateString(data.timestamp) &&
+             (!('details' in data) || (data.details is string && data.details.size() <= 50000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.uid == userId &&
+                    request.resource.data.email == request.auth.token.email &&
+                    (
+                      (isBootstrapAdmin() && request.resource.data.role == 'admin') ||
+                      (!isBootstrapAdmin() && request.resource.data.role == 'viewer' && request.resource.data.isActive == false) // Default to inactive viewer
+                    );
+                    
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['uid', 'email', 'createdAt']) &&
+                    (
+                      isAdmin() || 
+                      (isOwner(userId) && areImmutableFieldsUnchanged(['role', 'programs', 'grades', 'isActive']))
+                    );
+                    
+      allow delete: if isAdmin() && !isOwner(userId); // Admin can delete others, not themselves
+    }
+
+    match /orders/{orderId} {
+      allow read: if isActiveUser();
+      
+      allow create: if (isAdmin() || isEditor()) && isValidOrder(request.resource.data) &&
+                    request.resource.data.createdBy == request.auth.uid;
+                    
+      allow update: if (isAdmin() || isEditor()) && isValidOrder(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['id', 'createdBy', 'createdAt']);
+                    
+      allow delete: if isAdmin() || isEditor();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isActiveUser() && isValidAuditLog(request.resource.data) &&
+                    request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Immutable
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the system",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["admin", "editor", "viewer"], "description": "User's role" },
+        "programs": { "type": "array", "items": { "type": "string" }, "description": "Programs the user has access to (for editors)" },
+        "grades": { "type": "array", "items": { "type": "string" }, "description": "Grades the user has access to (for editors)" },
+        "isActive": { "type": "boolean", "description": "Whether the user account is active" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "name", "email", "role", "isActive", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A saved book order session/draft",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Order ID" },
+        "name": { "type": "string", "description": "Name of the order" },
+        "program": { "type": "string", "description": "Curriculum program" },
+        "grade": { "type": "string", "description": "Grade level" },
+        "academicYear": { "type": "string", "description": "Academic year" },
+        "schoolName": { "type": "string", "description": "School name" },
+        "books": { "type": "array", "description": "List of books in the order (JSON serialized)" },
+        "customSubjects": { "type": "string", "description": "Custom subjects (JSON serialized)" },
+        "createdBy": { "type": "string", "description": "UID of the user who created the order" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "name", "createdBy", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Log of actions performed in the system",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Action performed" },
+        "userId": { "type": "string", "description": "UID of the user who performed the action" },
+        "details": { "type": "string", "description": "Additional details (JSON serialized)" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp of the action" }
+      },
+      "required": ["action", "userId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Users collection"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Orders collection"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Audit logs collection"
+    }
+  }
+}
