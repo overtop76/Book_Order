@@ -11,15 +11,33 @@ const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
 };
 
 export default function LeftSidebar() {
-  const { books, setBooks } = useOrder();
-  const { isViewer } = useAuth();
+  const { books, setBooks, customSubjects, setCustomSubjects } = useOrder();
+  const { userData, isViewer } = useAuth();
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  
+  const allowedPrograms = userData?.programs?.length ? userData.programs : Object.keys(CURRICULA);
+  const allowedGrades = userData?.grades?.length ? userData.grades : null;
+  const allowedSubjects = userData?.subjects?.length ? userData.subjects : null;
+
+  const getGradesForProgram = (prog: string) => {
+    const allGrades = CURRICULA[prog]?.grades || [];
+    if (!allowedGrades) return allGrades;
+    return allGrades.filter(g => allowedGrades.includes(g));
+  };
+
+  const getSubjectsForProgram = (prog: string) => {
+    const allSubjects = [...(CURRICULA[prog]?.subjects || []), ...customSubjects];
+    if (!allowedSubjects) return allSubjects;
+    return allSubjects.filter(s => allowedSubjects.includes(s) || customSubjects.includes(s));
+  };
   
   const [title, setTitle] = useState('');
   const [isbn, setIsbn] = useState('');
   const [publisher, setPublisher] = useState('');
   const [subject, setSubject] = useState('General');
+  const [isCustomSubject, setIsCustomSubject] = useState(false);
+  const [customSubjectValue, setCustomSubjectValue] = useState('');
   const [students, setStudents] = useState<number>(0);
   const [projectionPct, setProjectionPct] = useState<number>(20);
   const [stock, setStock] = useState<number>(0);
@@ -53,20 +71,33 @@ export default function LeftSidebar() {
     setIsbnMessage('Looking up...');
 
     try {
-      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`);
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
       const data = await res.json();
-      const key = `ISBN:${cleanIsbn}`;
 
-      if (data[key]) {
-        const info = data[key];
+      if (data.items && data.items.length > 0) {
+        const info = data.items[0].volumeInfo;
         if (info.title) setTitle(info.title);
-        if (info.publishers?.length > 0) setPublisher(info.publishers.map((p: any) => p.name).join(', '));
+        if (info.publisher) setPublisher(info.publisher);
         
         setIsbnStatus('valid');
         setIsbnMessage(`Found: ${info.title.substring(0, 20)}${info.title.length > 20 ? '...' : ''}`);
       } else {
-        setIsbnStatus('invalid');
-        setIsbnMessage('ISBN not found');
+        // Fallback to OpenLibrary
+        const res2 = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`);
+        const data2 = await res2.json();
+        const key = `ISBN:${cleanIsbn}`;
+
+        if (data2[key]) {
+          const info = data2[key];
+          if (info.title) setTitle(info.title);
+          if (info.publishers?.length > 0) setPublisher(info.publishers.map((p: any) => p.name).join(', '));
+          
+          setIsbnStatus('valid');
+          setIsbnMessage(`Found: ${info.title.substring(0, 20)}${info.title.length > 20 ? '...' : ''}`);
+        } else {
+          setIsbnStatus('invalid');
+          setIsbnMessage('ISBN not found');
+        }
       }
     } catch (err) {
       setIsbnStatus('error');
@@ -79,11 +110,17 @@ export default function LeftSidebar() {
   const handleAddBook = () => {
     if (!selectedProgram || !selectedGrade || !title) return;
     
+    const finalSubject = isCustomSubject && customSubjectValue.trim() ? customSubjectValue.trim() : subject;
+
+    if (isCustomSubject && finalSubject && !customSubjects.includes(finalSubject)) {
+      setCustomSubjects([...customSubjects, finalSubject]);
+    }
+
     const newBook: Book = {
       id: `bk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       program: selectedProgram,
       grade: selectedGrade,
-      subject,
+      subject: finalSubject,
       title,
       isbn,
       publisher,
@@ -107,6 +144,8 @@ export default function LeftSidebar() {
     setStock(0);
     setIsbnStatus('idle');
     setIsbnMessage('');
+    setIsCustomSubject(false);
+    setCustomSubjectValue('');
   };
 
   return (
@@ -121,7 +160,7 @@ export default function LeftSidebar() {
         <div className="mb-6">
           <label className="block text-xs font-semibold text-gray-500 uppercase mb-3">Curriculum Program</label>
           <div className="grid grid-cols-3 gap-2">
-            {Object.keys(CURRICULA).map(prog => (
+            {allowedPrograms.map(prog => (
               <button 
                 key={prog}
                 onClick={() => { setSelectedProgram(prog); setSelectedGrade(null); }}
@@ -137,7 +176,7 @@ export default function LeftSidebar() {
           <div className="mb-6">
             <label className="block text-xs font-semibold text-gray-500 uppercase mb-3">Grade Level</label>
             <div className="grid grid-cols-4 gap-2">
-              {CURRICULA[selectedProgram].grades.map(g => (
+              {getGradesForProgram(selectedProgram).map(g => (
                 <button
                   key={g}
                   onClick={() => setSelectedGrade(g)}
@@ -207,12 +246,42 @@ export default function LeftSidebar() {
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
-            <select value={subject} onChange={e => setSubject(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-              <option value="General">General</option>
-              {selectedProgram && CURRICULA[selectedProgram].subjects.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            {!isCustomSubject ? (
+              <select 
+                value={subject} 
+                onChange={e => {
+                  if (e.target.value === 'custom') {
+                    setIsCustomSubject(true);
+                  } else {
+                    setSubject(e.target.value);
+                  }
+                }} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="General">General</option>
+                {selectedProgram && getSubjectsForProgram(selectedProgram).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+                <option value="custom" className="font-bold text-blue-600">+ Add Custom Subject...</option>
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={customSubjectValue} 
+                  onChange={e => setCustomSubjectValue(e.target.value)} 
+                  className="flex-1 px-3 py-2 border border-blue-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Enter custom subject" 
+                  autoFocus
+                />
+                <button 
+                  onClick={() => { setIsCustomSubject(false); setCustomSubjectValue(''); }}
+                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3 space-y-3">

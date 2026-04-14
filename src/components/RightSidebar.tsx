@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useOrder } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
-import { Save, Download, FolderOpen } from 'lucide-react';
+import { Save, Download, FolderOpen, FileJson, Upload, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 export default function RightSidebar() {
-  const { books, saveOrder, orders, loadOrder } = useOrder();
+  const { 
+    books, setBooks, saveOrder, orders, loadOrder,
+    filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject
+  } = useOrder();
   const { userData, isViewer } = useAuth();
   
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [schoolName, setSchoolName] = useState('');
   const [orderName, setOrderName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     if (!orderName) return alert('Please enter an order name');
@@ -21,7 +25,14 @@ export default function RightSidebar() {
   };
 
   const handleExportExcel = () => {
-    if (books.length === 0) return alert('No data to export');
+    const filteredBooks = books.filter(b => {
+      if (filterProgram && b.program !== filterProgram) return false;
+      if (filterGrade && b.grade !== filterGrade) return false;
+      if (filterSubject && b.subject !== filterSubject) return false;
+      return true;
+    });
+
+    if (filteredBooks.length === 0) return alert('No data to export');
     
     const wb = XLSX.utils.book_new();
     
@@ -34,7 +45,7 @@ export default function RightSidebar() {
 
     const colHeaders = ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
-    const dataRows = books.map((b, idx) => [
+    const dataRows = filteredBooks.map((b, idx) => [
       idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
       b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
       b.currentStock || 0, b.orderQty || 0, b.format, b.type
@@ -42,11 +53,11 @@ export default function RightSidebar() {
 
     const totalRow = [
       '', '', '', '', 'TOTAL', '', '',
-      books.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
       '',
-      books.reduce((s, b) => s + (b.projectedRequired || 0), 0),
-      books.reduce((s, b) => s + (b.currentStock || 0), 0),
-      books.reduce((s, b) => s + (b.orderQty || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.projectedRequired || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.currentStock || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.orderQty || 0), 0),
       '', ''
     ];
 
@@ -64,7 +75,14 @@ export default function RightSidebar() {
   };
 
   const handleExportPDF = () => {
-    if (books.length === 0) return alert('No data to export');
+    const filteredBooks = books.filter(b => {
+      if (filterProgram && b.program !== filterProgram) return false;
+      if (filterGrade && b.grade !== filterGrade) return false;
+      if (filterSubject && b.subject !== filterSubject) return false;
+      return true;
+    });
+
+    if (filteredBooks.length === 0) return alert('No data to export');
     
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const margin = 15;
@@ -75,7 +93,7 @@ export default function RightSidebar() {
     doc.text(`School: ${schoolName || 'N/A'}    |    Academic Year: ${academicYear}    |    Prepared by: ${userData?.name || 'Unknown'}    |    Date: ${new Date().toLocaleDateString()}`, margin, margin + 12);
 
     const headers = [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
-    const rows = books.map((b, idx) => [
+    const rows = filteredBooks.map((b, idx) => [
       idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
       b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
       b.currentStock || 0, b.orderQty || 0, b.format, b.type
@@ -83,11 +101,11 @@ export default function RightSidebar() {
 
     rows.push([
       '', '', '', '', 'TOTAL', '', '',
-      books.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
       '',
-      books.reduce((s, b) => s + (b.projectedRequired || 0), 0),
-      books.reduce((s, b) => s + (b.currentStock || 0), 0),
-      books.reduce((s, b) => s + (b.orderQty || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.projectedRequired || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.currentStock || 0), 0),
+      filteredBooks.reduce((s, b) => s + (b.orderQty || 0), 0),
       '', ''
     ]);
 
@@ -104,7 +122,78 @@ export default function RightSidebar() {
     doc.save(`GP-Book-Order-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const totalOrder = books.reduce((sum, b) => sum + b.orderQty, 0);
+  const handleExportJSON = () => {
+    if (books.length === 0) return alert('No data to export');
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `GP-Book-Order-${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedBooks = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedBooks)) {
+          const valid = importedBooks.every(b => b.id && b.title && b.program);
+          if (valid) {
+            setBooks(importedBooks);
+            alert('Data imported successfully!');
+          } else {
+            alert('Invalid JSON format. Missing required fields.');
+          }
+        }
+      } catch (err) {
+        alert('Error parsing JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Are you sure you want to clear all books from the current order? This cannot be undone.')) {
+      setBooks([]);
+    }
+  };
+
+  const filteredBooks = books.filter(b => {
+    if (filterProgram && b.program !== filterProgram) return false;
+    if (filterGrade && b.grade !== filterGrade) return false;
+    if (filterSubject && b.subject !== filterSubject) return false;
+    return true;
+  });
+
+  const totalOrder = filteredBooks.reduce((sum, b) => sum + b.orderQty, 0);
+
+  const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
+    American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
+    British: { grades: ['FS1','FS2','Y1','Y2','Y3','Y4','Y5','Y6','Y7','Y8','Y9','IG1','IG2','IG3'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Global Perspective'] },
+    IB: { grades: ['PYP1','PYP2','PYP3','PYP4','PYP5','PYP6','PYP7','PYP8','MYP1','MYP2','MYP3','MYP4','MYP5','DP1','DP2'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','INS (Individuals & Societies)'] }
+  };
+
+  const allowedPrograms = userData?.programs?.length ? userData.programs : Object.keys(CURRICULA);
+  
+  const getFilterGrades = () => {
+    if (filterProgram) return CURRICULA[filterProgram]?.grades || [];
+    const all = new Set<string>();
+    allowedPrograms.forEach(p => CURRICULA[p]?.grades.forEach(g => all.add(g)));
+    return Array.from(all);
+  };
+
+  const getFilterSubjects = () => {
+    if (filterProgram) return CURRICULA[filterProgram]?.subjects || [];
+    const all = new Set<string>();
+    allowedPrograms.forEach(p => CURRICULA[p]?.subjects.forEach(s => all.add(s)));
+    return Array.from(all);
+  };
 
   return (
     <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto flex flex-col h-full">
@@ -126,11 +215,50 @@ export default function RightSidebar() {
         </div>
       </div>
 
+      <div className="p-4 border-b border-gray-200 bg-amber-50/50">
+        <div className="font-bold text-amber-800 text-sm mb-4">Filter & Preview</div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Program</label>
+            <select 
+              value={filterProgram} 
+              onChange={e => { setFilterProgram(e.target.value); setFilterGrade(''); setFilterSubject(''); }} 
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+            >
+              <option value="">All Programs</option>
+              {allowedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Grade</label>
+              <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                <option value="">All Grades</option>
+                {getFilterGrades().map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
+              <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                <option value="">All Subjects</option>
+                {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <button 
+            onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); }} 
+            className="w-full text-xs text-gray-500 hover:text-gray-700 py-1.5 rounded-lg hover:bg-gray-100 transition border border-gray-200 bg-white"
+          >
+            ✕ Clear Filters
+          </button>
+        </div>
+      </div>
+
       <div className="p-4 border-b border-gray-200">
         <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Export Preview</div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-blue-700">{books.length}</div>
+            <div className="text-xl font-bold text-blue-700">{filteredBooks.length}</div>
             <div className="text-xs text-blue-500">Entries</div>
           </div>
           <div className="bg-orange-50 rounded-xl p-3 text-center">
@@ -171,6 +299,25 @@ export default function RightSidebar() {
               <div className="font-bold text-gray-800 text-sm">Export PDF</div>
             </div>
           </button>
+          
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <button onClick={handleExportJSON} className="flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
+              <FileJson className="w-3.5 h-3.5" />
+              JSON
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
+              <Upload className="w-3.5 h-3.5" />
+              Import
+            </button>
+            <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" />
+          </div>
+
+          {!isViewer && (
+            <button onClick={handleClearAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-medium transition">
+              <Trash2 className="w-4 h-4" />
+              Clear All Data
+            </button>
+          )}
         </div>
       </div>
 

@@ -8,9 +8,11 @@ import LeftSidebar from '../components/LeftSidebar';
 import DataTable from '../components/DataTable';
 import RightSidebar from '../components/RightSidebar';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import { useOrder } from '../context/OrderContext';
 
 export default function Dashboard() {
   const { userData, isAdmin } = useAuth();
+  const { isAutoSaving, currentOrder } = useOrder();
   const [activeTab, setActiveTab] = useState<'entry' | 'review' | 'export'>('entry');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
@@ -55,6 +57,12 @@ export default function Dashboard() {
           </nav>
 
           <div className="flex items-center gap-3">
+            {currentOrder && (
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${isAutoSaving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                <div className={`w-2 h-2 rounded-full ${isAutoSaving ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`}></div>
+                {isAutoSaving ? 'Saving...' : 'Auto-saved'}
+              </div>
+            )}
             <div className="text-sm text-gray-600">
               Welcome, <span className="font-semibold">{userData?.name}</span> ({userData?.role})
             </div>

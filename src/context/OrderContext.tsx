@@ -39,9 +39,20 @@ interface OrderContextType {
   currentOrder: Order | null;
   books: Book[];
   setBooks: React.Dispatch<React.SetStateAction<Book[]>>;
+  customSubjects: string[];
+  setCustomSubjects: React.Dispatch<React.SetStateAction<string[]>>;
   saveOrder: (name: string, academicYear: string, schoolName: string) => Promise<void>;
   loadOrder: (orderId: string) => void;
   orders: Order[];
+  filterProgram: string;
+  setFilterProgram: React.Dispatch<React.SetStateAction<string>>;
+  filterGrade: string;
+  setFilterGrade: React.Dispatch<React.SetStateAction<string>>;
+  filterSubject: string;
+  setFilterSubject: React.Dispatch<React.SetStateAction<string>>;
+  groupBy: 'none' | 'grade' | 'subject';
+  setGroupBy: React.Dispatch<React.SetStateAction<'none' | 'grade' | 'subject'>>;
+  isAutoSaving: boolean;
 }
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -49,8 +60,15 @@ const OrderContext = createContext<OrderContextType | null>(null);
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, userData } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
+  const [customSubjects, setCustomSubjects] = useState<string[]>([]);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  
+  const [filterProgram, setFilterProgram] = useState('');
+  const [filterGrade, setFilterGrade] = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject'>('none');
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -69,33 +87,54 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
     if (!user) return;
     
-    const orderId = currentOrder?.id || `order_${Date.now()}`;
-    const newOrder: Order = {
-      id: orderId,
-      name,
-      academicYear,
-      schoolName,
-      books: JSON.stringify(books),
-      customSubjects: JSON.stringify([]), // Simplified for now
-      createdBy: user.uid,
-      createdAt: currentOrder?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    setIsAutoSaving(true);
+    try {
+      const orderId = currentOrder?.id || `order_${Date.now()}`;
+      const newOrder: Order = {
+        id: orderId,
+        name,
+        academicYear,
+        schoolName,
+        books: JSON.stringify(books),
+        customSubjects: JSON.stringify(customSubjects),
+        createdBy: user.uid,
+        createdAt: currentOrder?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    await setDoc(doc(db, 'orders', orderId), newOrder);
-    setCurrentOrder(newOrder);
+      await setDoc(doc(db, 'orders', orderId), newOrder);
+      setCurrentOrder(newOrder);
+    } finally {
+      setIsAutoSaving(false);
+    }
   };
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!currentOrder || books.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      saveOrder(currentOrder.name, currentOrder.academicYear || '', currentOrder.schoolName || '');
+    }, 2000); // Debounce for 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [books, currentOrder?.name, currentOrder?.academicYear, currentOrder?.schoolName]);
 
   const loadOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
       setCurrentOrder(order);
       setBooks(JSON.parse(order.books));
+      setCustomSubjects(order.customSubjects ? JSON.parse(order.customSubjects) : []);
     }
   };
 
   return (
-    <OrderContext.Provider value={{ currentOrder, books, setBooks, saveOrder, loadOrder, orders }}>
+    <OrderContext.Provider value={{ 
+      currentOrder, books, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
+      filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
+      groupBy, setGroupBy, isAutoSaving
+    }}>
       {children}
     </OrderContext.Provider>
   );

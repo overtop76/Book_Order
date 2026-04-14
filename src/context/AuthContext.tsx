@@ -10,6 +10,7 @@ interface UserData {
   role: 'admin' | 'editor' | 'viewer';
   programs?: string[];
   grades?: string[];
+  subjects?: string[];
   isActive: boolean;
   createdAt: string;
 }

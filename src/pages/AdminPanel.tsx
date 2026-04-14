@@ -3,8 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Shield } from 'lucide-react';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import UserPermissionsModal from '../components/UserPermissionsModal';
+import CreateUserModal from '../components/CreateUserModal';
 
 interface User {
   uid: string;
@@ -14,6 +16,7 @@ interface User {
   isActive: boolean;
   programs?: string[];
   grades?: string[];
+  subjects?: string[];
 }
 
 export default function AdminPanel() {
@@ -21,6 +24,8 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<User | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -56,33 +61,16 @@ export default function AdminPanel() {
     }
   };
 
-  const handleResetPassword = async (uid: string) => {
-    const newPassword = prompt('Enter new password for this user (min 6 characters):');
-    if (!newPassword) return;
-    if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters.');
-      return;
-    }
-    
-    try {
-      const token = await user?.getIdToken();
-      const res = await fetch(`/api/users/${uid}/password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: newPassword })
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to reset password');
+  const handleResetPassword = async (email: string) => {
+    if (window.confirm(`Send password reset email to ${email}?`)) {
+      try {
+        const { sendPasswordResetEmail } = await import('firebase/auth');
+        const { auth } = await import('../firebase');
+        await sendPasswordResetEmail(auth, email);
+        alert('Password reset email sent successfully!');
+      } catch (error: any) {
+        alert(error.message);
       }
-      
-      alert('Password reset successfully!');
-    } catch (error: any) {
-      alert(error.message);
     }
   };
 
@@ -94,6 +82,9 @@ export default function AdminPanel() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <div className="flex items-center gap-4">
+            <button onClick={() => setIsCreateUserModalOpen(true)} className="flex items-center gap-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg transition font-medium">
+              Create New User
+            </button>
             <button onClick={() => setIsPasswordModalOpen(true)} className="flex items-center gap-1.5 text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition font-medium">
               <KeyRound className="w-4 h-4" />
               Change My Password
@@ -145,10 +136,17 @@ export default function AdminPanel() {
                         {u.isActive ? 'Deactivate' : 'Activate'}
                       </button>
                       <button
-                        onClick={() => handleResetPassword(u.uid)}
+                        onClick={() => handleResetPassword(u.email)}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Reset Password
+                      </button>
+                      <button
+                        onClick={() => setSelectedUserForPermissions(u)}
+                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        Permissions
                       </button>
                     </div>
                   </td>
@@ -159,6 +157,17 @@ export default function AdminPanel() {
         </div>
       </div>
       <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
+      <CreateUserModal 
+        isOpen={isCreateUserModalOpen} 
+        onClose={() => setIsCreateUserModalOpen(false)} 
+        onUserCreated={fetchUsers} 
+      />
+      <UserPermissionsModal 
+        isOpen={!!selectedUserForPermissions} 
+        onClose={() => setSelectedUserForPermissions(null)} 
+        user={selectedUserForPermissions} 
+        onUpdate={fetchUsers} 
+      />
     </div>
   );
 }
