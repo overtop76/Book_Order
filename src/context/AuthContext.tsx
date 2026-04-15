@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 interface UserData {
   uid: string;
@@ -47,10 +47,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData);
+            const data = userDoc.data() as UserData;
+            
+            // Auto-upgrade the main admin if they got stuck as inactive
+            if (firebaseUser.email === 'ahmed.g.lotfy76@gmail.com' && (!data.isActive || data.role !== 'admin')) {
+              const updatedData = { ...data, isActive: true, role: 'admin' };
+              await updateDoc(userDocRef, { isActive: true, role: 'admin' });
+              setUserData(updatedData as UserData);
+            }
+            // If the user was soft-deleted, restore them as an inactive viewer
+            else if ((data as any).isDeleted) {
+              const updatedData = { ...data, isDeleted: false, isActive: false, role: 'viewer' };
+              await updateDoc(userDocRef, { isDeleted: false, isActive: false, role: 'viewer' });
+              setUserData(updatedData as UserData);
+            } else {
+              setUserData(data);
+            }
           } else {
             // Bootstrap first user or create new user
-            const isFirstUser = firebaseUser.email === 'admin@admin.com' || (firebaseUser.email === 'ahmed.g.lotfy76@gmail.com' && firebaseUser.emailVerified);
+            const isFirstUser = firebaseUser.email === 'admin@admin.com' || firebaseUser.email === 'ahmed.g.lotfy76@gmail.com';
             const newUserData: UserData = {
               uid: firebaseUser.uid,
               name: firebaseUser.displayName || 'New User',

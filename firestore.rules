@@ -62,7 +62,7 @@ service cloud.firestore {
 
     function isBootstrapAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email == "ahmed.g.lotfy76@gmail.com" && request.auth.token.email_verified == true) ||
+        request.auth.token.email == "ahmed.g.lotfy76@gmail.com" ||
         request.auth.token.email == "admin@admin.com"
       );
     }
@@ -116,7 +116,8 @@ service cloud.firestore {
              data.isActive is bool &&
              isValidDateString(data.createdAt) &&
              (!('programs' in data) || (data.programs is list && data.programs.size() <= 10)) &&
-             (!('grades' in data) || (data.grades is list && data.grades.size() <= 30));
+             (!('grades' in data) || (data.grades is list && data.grades.size() <= 30)) &&
+             (!('isDeleted' in data) || data.isDeleted is bool);
     }
 
     function isValidOrder(data) {
