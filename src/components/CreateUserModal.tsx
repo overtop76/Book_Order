@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Copy, Check } from 'lucide-react';
-import { initializeApp, deleteApp } from 'firebase/app';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, firebaseConfig } from '../firebase';
@@ -15,6 +15,8 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
+  const [programAccess, setProgramAccess] = useState<string>('ALL');
+  const [customPassword, setCustomPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -36,15 +38,21 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
     setError('');
     setLoading(true);
 
-    const newPassword = generatePassword();
+    const newPassword = customPassword || generatePassword();
 
     try {
-      // Initialize a secondary app to create the user without logging out the admin
-      const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+      let secondaryApp;
+      try {
+        secondaryApp = getApp('SecondaryApp');
+      } catch (e) {
+        secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+      }
       const secondaryAuth = getAuth(secondaryApp);
 
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, newPassword);
       const newUser = userCredential.user;
+
+      const programs = programAccess === 'ALL' ? [] : [programAccess];
 
       // Add user to Firestore
       await setDoc(doc(db, 'users', newUser.uid), {
@@ -52,6 +60,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
         name,
         email,
         role,
+        programs,
         isActive: true,
         createdAt: new Date().toISOString()
       });
@@ -77,7 +86,9 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
   const handleClose = () => {
     setName('');
     setEmail('');
+    setCustomPassword('');
     setRole('viewer');
+    setProgramAccess('ALL');
     setGeneratedPassword('');
     setError('');
     onClose();
@@ -155,18 +166,44 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password (Optional)</label>
+                <input
+                  type="text"
+                  value={customPassword}
+                  onChange={(e) => setCustomPassword(e.target.value)}
+                  placeholder="Leave empty to auto-generate"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  minLength={6}
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as any)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="viewer">Viewer (Read-only)</option>
-                  <option value="editor">Editor (Create/Edit Orders)</option>
+                  <option value="viewer">Viewer (Read-only / Print)</option>
+                  <option value="editor">Editor (Create / Edit Orders / Print)</option>
                   <option value="admin">Admin (Full Access)</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program Access</label>
+                <select
+                  value={programAccess}
+                  onChange={(e) => setProgramAccess(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="ALL">All Programs</option>
+                  <option value="American">American</option>
+                  <option value="British">British</option>
+                  <option value="IB">IB</option>
+                </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  You can fine-tune permissions (Programs, Grades, Subjects) after creating the user.
+                  You can fine-tune permissions (Grades, Subjects) after creating the user.
                 </p>
               </div>
 
@@ -176,7 +213,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
                   disabled={loading}
                   className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 transition-colors"
                 >
-                  {loading ? 'Creating User...' : 'Create User & Generate Password'}
+                  {loading ? 'Creating User...' : (customPassword ? 'Create User' : 'Create User & Generate Password')}
                 </button>
               </div>
             </form>

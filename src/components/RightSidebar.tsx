@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Save, Download, FolderOpen, FileJson, Upload, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function RightSidebar() {
   const { 
@@ -16,6 +16,7 @@ export default function RightSidebar() {
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [schoolName, setSchoolName] = useState('');
   const [orderName, setOrderName] = useState('');
+  const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
@@ -24,11 +25,20 @@ export default function RightSidebar() {
     alert('Order saved successfully!');
   };
 
+  const getExportFileName = (ext: string) => {
+    const userName = userData?.name ? userData.name.replace(/\s+/g, '_') : 'User';
+    const program = filterProgram || 'AllPrograms';
+    const date = new Date().toISOString().split('T')[0];
+    return `${userName}.${program}.${date}.${ext}`;
+  };
+
   const handleExportExcel = () => {
     const filteredBooks = books.filter(b => {
       if (filterProgram && b.program !== filterProgram) return false;
       if (filterGrade && b.grade !== filterGrade) return false;
       if (filterSubject && b.subject !== filterSubject) return false;
+      if (filterStock === 'in-stock' && (Number(b.currentStock) || 0) <= 0) return false;
+      if (filterStock === 'out-of-stock' && (Number(b.currentStock) || 0) > 0) return false;
       return true;
     });
 
@@ -53,11 +63,11 @@ export default function RightSidebar() {
 
     const totalRow = [
       '', '', '', '', 'TOTAL', '', '',
-      filteredBooks.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
       '',
-      filteredBooks.reduce((s, b) => s + (b.projectedRequired || 0), 0),
-      filteredBooks.reduce((s, b) => s + (b.currentStock || 0), 0),
-      filteredBooks.reduce((s, b) => s + (b.orderQty || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
       '', ''
     ];
 
@@ -71,7 +81,7 @@ export default function RightSidebar() {
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Book Orders');
-    XLSX.writeFile(wb, `GP-Book-Order-${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, getExportFileName('xlsx'));
   };
 
   const handleExportPDF = () => {
@@ -79,6 +89,8 @@ export default function RightSidebar() {
       if (filterProgram && b.program !== filterProgram) return false;
       if (filterGrade && b.grade !== filterGrade) return false;
       if (filterSubject && b.subject !== filterSubject) return false;
+      if (filterStock === 'in-stock' && (Number(b.currentStock) || 0) <= 0) return false;
+      if (filterStock === 'out-of-stock' && (Number(b.currentStock) || 0) > 0) return false;
       return true;
     });
 
@@ -101,15 +113,15 @@ export default function RightSidebar() {
 
     rows.push([
       '', '', '', '', 'TOTAL', '', '',
-      filteredBooks.reduce((s, b) => s + (b.nextYearStudents || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
       '',
-      filteredBooks.reduce((s, b) => s + (b.projectedRequired || 0), 0),
-      filteredBooks.reduce((s, b) => s + (b.currentStock || 0), 0),
-      filteredBooks.reduce((s, b) => s + (b.orderQty || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+      filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
       '', ''
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: headers,
       body: rows,
       startY: margin + 16,
@@ -119,7 +131,7 @@ export default function RightSidebar() {
       bodyStyles: { fontSize: 6.5 },
     });
 
-    doc.save(`GP-Book-Order-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(getExportFileName('pdf'));
   };
 
   const handleExportJSON = () => {
@@ -127,7 +139,7 @@ export default function RightSidebar() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `GP-Book-Order-${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchorNode.setAttribute("download", getExportFileName('json'));
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -168,10 +180,12 @@ export default function RightSidebar() {
     if (filterProgram && b.program !== filterProgram) return false;
     if (filterGrade && b.grade !== filterGrade) return false;
     if (filterSubject && b.subject !== filterSubject) return false;
+    if (filterStock === 'in-stock' && (Number(b.currentStock) || 0) <= 0) return false;
+    if (filterStock === 'out-of-stock' && (Number(b.currentStock) || 0) > 0) return false;
     return true;
   });
 
-  const totalOrder = filteredBooks.reduce((sum, b) => sum + b.orderQty, 0);
+  const totalOrder = filteredBooks.reduce((sum, b) => sum + (Number(b.orderQty) || 0), 0);
 
   const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
     American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
@@ -244,9 +258,17 @@ export default function RightSidebar() {
                 {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
+              <select value={filterStock} onChange={e => setFilterStock(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                <option value="all">All Stock</option>
+                <option value="in-stock">In Stock (&gt; 0)</option>
+                <option value="out-of-stock">Out of Stock (0)</option>
+              </select>
+            </div>
           </div>
           <button 
-            onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); }} 
+            onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); setFilterStock('all'); }} 
             className="w-full text-xs text-gray-500 hover:text-gray-700 py-1.5 rounded-lg hover:bg-gray-100 transition border border-gray-200 bg-white"
           >
             ✕ Clear Filters
@@ -256,16 +278,16 @@ export default function RightSidebar() {
 
       <div className="p-4 border-b border-gray-200">
         <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Export Preview</div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-blue-700">{filteredBooks.length}</div>
-            <div className="text-xs text-blue-500">Entries</div>
-          </div>
-          <div className="bg-orange-50 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-orange-700">{totalOrder}</div>
-            <div className="text-xs text-orange-500">Final Order Qty</div>
-          </div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-blue-50 rounded-xl p-3 text-center">
+          <div className="text-xl font-bold text-blue-700">{filteredBooks.length}</div>
+          <div className="text-xs text-blue-500">Entries</div>
         </div>
+        <div className="bg-orange-50 rounded-xl p-3 text-center">
+          <div className="text-xl font-bold text-orange-700">{totalOrder}</div>
+          <div className="text-xs text-orange-500">Final Order Qty</div>
+        </div>
+      </div>
       </div>
 
       <div className="p-4 flex-1">

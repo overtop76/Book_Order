@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Lock, Mail, AlertCircle } from 'lucide-react';
@@ -10,6 +10,7 @@ export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -36,6 +37,24 @@ export default function Login() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError('');
+    setResetMessage('');
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMessage('Password reset email sent! Check your inbox.');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -54,6 +73,11 @@ export default function Login() {
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg flex gap-3 items-start">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
+            </div>
+          )}
+          {resetMessage && (
+            <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm rounded-r-lg flex gap-3 items-start">
+              <span>{resetMessage}</span>
             </div>
           )}
 
@@ -102,14 +126,23 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-            >
-              {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-            </button>
-          </div>
+            <div className="flex items-center justify-between mt-6">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                disabled={loading}
+              >
+                Forgot Password?
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRegistering(!isRegistering)}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+              </button>
+            </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
 import { KeyRound, Shield } from 'lucide-react';
@@ -61,6 +61,18 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteUser = async (uid: string, email: string) => {
+    if (window.confirm(`Are you sure you want to permanently delete the user ${email}? Their data will remain, but they will lose all access.`)) {
+      try {
+        await deleteDoc(doc(db, 'users', uid));
+        fetchUsers();
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        alert("Failed to delete user.");
+      }
+    }
+  };
+
   const handleResetPassword = async (email: string) => {
     if (window.confirm(`Send password reset email to ${email}?`)) {
       try {
@@ -80,7 +92,12 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Note: Passwords are encrypted by Firebase and cannot be viewed. Use "Reset Password" to send a reset link to a user.
+            </p>
+          </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setIsCreateUserModalOpen(true)} className="flex items-center gap-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg transition font-medium">
               Create New User
@@ -135,6 +152,14 @@ export default function AdminPanel() {
                       >
                         {u.isActive ? 'Deactivate' : 'Activate'}
                       </button>
+                      {!u.isActive && u.uid !== user?.uid && (
+                        <button
+                          onClick={() => handleDeleteUser(u.uid, u.email)}
+                          className="text-red-600 hover:text-red-900 font-medium"
+                        >
+                          Delete
+                        </button>
+                      )}
                       <button
                         onClick={() => handleResetPassword(u.email)}
                         className="text-blue-600 hover:text-blue-900"
