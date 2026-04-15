@@ -12,7 +12,7 @@ import { useOrder } from '../context/OrderContext';
 
 export default function Dashboard() {
   const { userData, isAdmin } = useAuth();
-  const { isAutoSaving, currentOrder } = useOrder();
+  const { isAutoSaving, currentOrder, lastSavedAt, books } = useOrder();
   const [activeTab, setActiveTab] = useState<'entry' | 'review' | 'export'>('entry');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
@@ -57,10 +57,10 @@ export default function Dashboard() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {currentOrder && (
+            {(currentOrder || books.length > 0) && (
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${isAutoSaving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                 <div className={`w-2 h-2 rounded-full ${isAutoSaving ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`}></div>
-                {isAutoSaving ? 'Saving...' : 'Auto-saved'}
+                {isAutoSaving ? 'Saving...' : (lastSavedAt ? `Saved at ${lastSavedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Auto-saved')}
               </div>
             )}
             <div className="text-sm text-gray-600">

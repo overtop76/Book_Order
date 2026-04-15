@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { collection, doc, setDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
@@ -55,6 +55,13 @@ interface OrderContextType {
   viewMode: 'order' | 'stock';
   setViewMode: React.Dispatch<React.SetStateAction<'order' | 'stock'>>;
   isAutoSaving: boolean;
+  orderName: string;
+  setOrderName: React.Dispatch<React.SetStateAction<string>>;
+  academicYear: string;
+  setAcademicYear: React.Dispatch<React.SetStateAction<string>>;
+  schoolName: string;
+  setSchoolName: React.Dispatch<React.SetStateAction<string>>;
+  lastSavedAt: Date | null;
 }
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -72,6 +79,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject'>('none');
   const [viewMode, setViewMode] = useState<'order' | 'stock'>('order');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [orderName, setOrderName] = useState('');
+  const [academicYear, setAcademicYear] = useState('2026-2027');
+  const [schoolName, setSchoolName] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  const saveOrderRef = useRef<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -107,21 +120,35 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       await setDoc(doc(db, 'orders', orderId), newOrder);
       setCurrentOrder(newOrder);
+      setLastSavedAt(new Date());
     } finally {
       setIsAutoSaving(false);
     }
   };
 
+  useEffect(() => {
+    saveOrderRef.current = saveOrder;
+  });
+
   // Auto-save effect
   useEffect(() => {
-    if (!currentOrder || books.length === 0) return;
+    if (books.length === 0 && !orderName) return;
     
     const timer = setTimeout(() => {
-      saveOrder(currentOrder.name, currentOrder.academicYear || '', currentOrder.schoolName || '');
+      // Auto-save as 'Draft Order' if no name provided yet
+      if (saveOrderRef.current) saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
     }, 2000); // Debounce for 2 seconds
 
-    return () => clearTimeout(timer);
-  }, [books, currentOrder?.name, currentOrder?.academicYear, currentOrder?.schoolName]);
+    // Also set up a 2-minute regular interval save
+    const intervalTimer = setInterval(() => {
+      if (saveOrderRef.current) saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
+    }, 120000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(intervalTimer);
+    };
+  }, [books, customSubjects, orderName, academicYear, schoolName]);
 
   const loadOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
@@ -129,6 +156,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentOrder(order);
       setBooks(JSON.parse(order.books));
       setCustomSubjects(order.customSubjects ? JSON.parse(order.customSubjects) : []);
+      setOrderName(order.name || '');
+      setAcademicYear(order.academicYear || '2026-2027');
+      setSchoolName(order.schoolName || '');
+      if (order.updatedAt) setLastSavedAt(new Date(order.updatedAt));
     }
   };
 
@@ -136,7 +167,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <OrderContext.Provider value={{ 
       currentOrder, books, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
-      groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving
+      groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
+      orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt
     }}>
       {children}
     </OrderContext.Provider>

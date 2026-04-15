@@ -71,11 +71,13 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
       
-      if (['nextYearStudents', 'projectionPct', 'currentStock'].includes(name)) {
+      if (['nextYearStudents', 'projectionPct', 'currentStock', 'format'].includes(name)) {
         const students = name === 'nextYearStudents' ? parseInt(value) || 0 : prev.nextYearStudents;
         const pct = name === 'projectionPct' ? parseInt(value) || 0 : prev.projectionPct;
-        const stock = name === 'currentStock' ? parseInt(value) || 0 : prev.currentStock;
+        const format = name === 'format' ? value : prev.format;
+        const stock = format === 'Digital' ? 0 : (name === 'currentStock' ? parseInt(value) || 0 : prev.currentStock);
         
+        updated.currentStock = stock;
         updated.projectedRequired = Math.ceil(students + (students * pct / 100));
         updated.orderQty = Math.max(0, updated.projectedRequired - stock);
       }
@@ -165,21 +167,22 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
-              <input type="number" name="currentStock" value={formData.currentStock} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="number" name="currentStock" value={formData.format === 'Digital' ? 0 : formData.currentStock} onChange={handleChange} disabled={formData.format === 'Digital'} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-400" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Format</label>
               <select name="format" value={formData.format} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 <option value="Hard Copy">Hard Copy</option>
                 <option value="Digital">Digital</option>
-                <option value="Bundle">Bundle</option>
+                <option value="Both">Both</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Type</label>
               <select name="type" value={formData.type} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 <option value="Student Copy">Student Copy</option>
-                <option value="Teacher Copy">Teacher Copy</option>
+                <option value="Teacher Edition">Teacher Edition</option>
+                <option value="Resource Material">Resource Material</option>
               </select>
             </div>
           </div>

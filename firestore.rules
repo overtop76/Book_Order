@@ -163,7 +163,7 @@ service cloud.firestore {
                       (isOwner(userId) && areImmutableFieldsUnchanged(['role', 'programs', 'grades', 'isActive']))
                     );
                     
-      allow delete: if isAdmin() && !isOwner(userId); // Admin can delete others, not themselves
+      allow delete: if isAdmin();
     }
 
     match /orders/{orderId} {

@@ -10,13 +10,10 @@ export default function RightSidebar() {
   const { 
     books, setBooks, saveOrder, orders, loadOrder,
     filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
-    viewMode
+    viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt
   } = useOrder();
   const { userData, isViewer } = useAuth();
   
-  const [academicYear, setAcademicYear] = useState('2026-2027');
-  const [schoolName, setSchoolName] = useState('');
-  const [orderName, setOrderName] = useState('');
   const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +55,9 @@ export default function RightSidebar() {
       ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Current Stock']
       : ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
+    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f;
+    const typeAbbr = (t: string) => t === 'Student Copy' ? 'SC' : t === 'Teacher Edition' ? 'TE' : t === 'Resource Material' ? 'RM' : t;
+
     const dataRows = filteredBooks.map((b, idx) => {
       if (viewMode === 'stock') {
         return [
@@ -68,7 +68,7 @@ export default function RightSidebar() {
       return [
         idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
         b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
-        b.currentStock || 0, b.orderQty || 0, b.format, b.type
+        b.currentStock || 0, b.orderQty || 0, formatAbbr(b.format), typeAbbr(b.type)
       ];
     });
 
@@ -87,7 +87,9 @@ export default function RightSidebar() {
           '', ''
         ];
 
-    const allData = [...headerData, colHeaders, ...dataRows, totalRow];
+    const allData = viewMode === 'stock' 
+      ? [...headerData, colHeaders, ...dataRows, totalRow]
+      : [...headerData, colHeaders, ...dataRows, totalRow, [], ['Abbreviations: HC = Hard Copy, D = Digital, B = Both | SC = Student Copy, TE = Teacher Edition, RM = Resource Material']];
     const ws = XLSX.utils.aoa_to_sheet(allData);
 
     ws['!cols'] = viewMode === 'stock'
@@ -129,6 +131,9 @@ export default function RightSidebar() {
       ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Stock']]
       : [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
     
+    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f;
+    const typeAbbr = (t: string) => t === 'Student Copy' ? 'SC' : t === 'Teacher Edition' ? 'TE' : t === 'Resource Material' ? 'RM' : t;
+
     const rows = filteredBooks.map((b, idx) => {
       if (viewMode === 'stock') {
         return [
@@ -139,7 +144,7 @@ export default function RightSidebar() {
       return [
         idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
         b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
-        b.currentStock || 0, b.orderQty || 0, b.format, b.type
+        b.currentStock || 0, b.orderQty || 0, formatAbbr(b.format), typeAbbr(b.type)
       ];
     });
 
@@ -169,6 +174,12 @@ export default function RightSidebar() {
       headStyles: { fillColor: [43, 76, 126], textColor: 255, fontStyle: 'bold', fontSize: 7 },
       bodyStyles: { fontSize: 6.5 },
     });
+
+    if (viewMode !== 'stock') {
+      doc.setFontSize(7);
+      doc.setTextColor(100);
+      doc.text('Abbreviations: HC = Hard Copy, D = Digital, B = Both | SC = Student Copy, TE = Teacher Edition, RM = Resource Material', margin, (doc as any).lastAutoTable.finalY + 10);
+    }
 
     doc.save(getExportFileName('pdf'));
   };

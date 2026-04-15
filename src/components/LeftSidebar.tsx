@@ -49,7 +49,7 @@ export default function LeftSidebar() {
   const [isbnMessage, setIsbnMessage] = useState('');
 
   const projected = Math.ceil(students + (students * projectionPct / 100));
-  const orderQty = Math.max(0, projected - stock);
+  const orderQty = Math.max(0, projected - (format === 'Digital' ? 0 : stock));
 
   const validateISBN = (isbnStr: string) => {
     const clean = isbnStr.replace(/[-\s]/g, '');
@@ -71,37 +71,60 @@ export default function LeftSidebar() {
     setIsbnMessage('Looking up...');
 
     try {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
-      const data = await res.json();
+      let foundTitle = '';
+      let foundPublisher = '';
+      let foundEdition = '';
 
-      if (data.items && data.items.length > 0) {
-        const info = data.items[0].volumeInfo;
-        if (info.title) setTitle(info.title);
-        if (info.publisher) setPublisher(info.publisher);
-        
-        setIsbnStatus('valid');
-        setIsbnMessage(`Found: ${info.title.substring(0, 20)}${info.title.length > 20 ? '...' : ''}`);
-      } else {
-        // Fallback to OpenLibrary
-        const res2 = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`);
+      // 1. Try Google Books API
+      const res1 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
+      const data1 = await res1.json();
+
+      if (data1.items && data1.items.length > 0) {
+        const info = data1.items[0].volumeInfo;
+        foundTitle = info.title || '';
+        if (info.subtitle) foundTitle += `: ${info.subtitle}`;
+        foundPublisher = info.publisher || '';
+        // Google Books sometimes puts edition in the title or description, but no explicit field usually.
+      }
+
+      // 2. Try OpenLibrary API (details) if Google Books didn't find everything
+      if (!foundTitle || !foundPublisher) {
+        const res2 = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=details`);
         const data2 = await res2.json();
         const key = `ISBN:${cleanIsbn}`;
 
-        if (data2[key]) {
-          const info = data2[key];
-          if (info.title) setTitle(info.title);
-          if (info.publishers?.length > 0) setPublisher(info.publishers.map((p: any) => p.name).join(', '));
-          
-          setIsbnStatus('valid');
-          setIsbnMessage(`Found: ${info.title.substring(0, 20)}${info.title.length > 20 ? '...' : ''}`);
-        } else {
-          setIsbnStatus('invalid');
-          setIsbnMessage('ISBN not found');
+        if (data2[key] && data2[key].details) {
+          const details = data2[key].details;
+          if (!foundTitle && details.title) foundTitle = details.title;
+          if (!foundPublisher && details.publishers && details.publishers.length > 0) {
+            foundPublisher = details.publishers.join(', ');
+          }
+          if (details.edition_name) {
+            foundEdition = details.edition_name;
+          } else if (details.revision) {
+            foundEdition = `Rev ${details.revision}`;
+          }
         }
       }
+
+      if (foundTitle) {
+        let finalTitle = foundTitle;
+        if (foundEdition && !finalTitle.toLowerCase().includes('edition')) {
+          finalTitle += ` (${foundEdition})`;
+        }
+        setTitle(finalTitle);
+        if (foundPublisher) setPublisher(foundPublisher);
+        
+        setIsbnStatus('valid');
+        setIsbnMessage(`Found: ${finalTitle.substring(0, 25)}${finalTitle.length > 25 ? '...' : ''}`);
+      } else {
+        setIsbnStatus('invalid');
+        setIsbnMessage('ISBN not found in databases');
+      }
     } catch (err) {
+      console.error("ISBN Lookup Error:", err);
       setIsbnStatus('error');
-      setIsbnMessage('Lookup failed');
+      setIsbnMessage('Lookup failed. Please check connection.');
     } finally {
       setIsLookingUp(false);
     }
@@ -284,6 +307,28 @@ export default function LeftSidebar() {
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Format</label>
+              <select value={format} onChange={e => {
+                setFormat(e.target.value);
+                if (e.target.value === 'Digital') setStock(0);
+              }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                <option value="Hard Copy">Hard Copy</option>
+                <option value="Digital">Digital</option>
+                <option value="Both">Both</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Type</label>
+              <select value={type} onChange={e => setType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                <option value="Student Copy">Student Copy</option>
+                <option value="Teacher Edition">Teacher Edition</option>
+                <option value="Resource Material">Resource Material</option>
+              </select>
+            </div>
+          </div>
+
           <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3 space-y-3">
             <div className="text-xs font-bold text-blue-900">Enrollment & Projection</div>
             <div className="grid grid-cols-2 gap-2">
@@ -304,7 +349,14 @@ export default function LeftSidebar() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
-                <input type="number" value={stock || ''} onChange={e => setStock(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" placeholder="0" />
+                <input 
+                  type="number" 
+                  value={format === 'Digital' ? 0 : (stock || '')} 
+                  onChange={e => setStock(parseInt(e.target.value) || 0)} 
+                  disabled={format === 'Digital'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400" 
+                  placeholder="0" 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Final Order Qty</label>
