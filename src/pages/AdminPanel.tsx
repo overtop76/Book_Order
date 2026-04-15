@@ -65,10 +65,11 @@ export default function AdminPanel() {
     if (window.confirm(`Are you sure you want to permanently delete the user ${email}? Their data will remain, but they will lose all access.`)) {
       try {
         await deleteDoc(doc(db, 'users', uid));
+        alert(`User ${email} deleted successfully.`);
         fetchUsers();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting user:", error);
-        alert("Failed to delete user.");
+        alert(`Failed to delete user: ${error.message}`);
       }
     }
   };

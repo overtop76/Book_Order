@@ -9,7 +9,8 @@ import autoTable from 'jspdf-autotable';
 export default function RightSidebar() {
   const { 
     books, setBooks, saveOrder, orders, loadOrder,
-    filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject
+    filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
+    viewMode
   } = useOrder();
   const { userData, isViewer } = useAuth();
   
@@ -53,32 +54,52 @@ export default function RightSidebar() {
       []
     ];
 
-    const colHeaders = ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
+    const colHeaders = viewMode === 'stock' 
+      ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Current Stock']
+      : ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
-    const dataRows = filteredBooks.map((b, idx) => [
-      idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
-      b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
-      b.currentStock || 0, b.orderQty || 0, b.format, b.type
-    ]);
+    const dataRows = filteredBooks.map((b, idx) => {
+      if (viewMode === 'stock') {
+        return [
+          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+          b.currentStock || 0
+        ];
+      }
+      return [
+        idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+        b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
+        b.currentStock || 0, b.orderQty || 0, b.format, b.type
+      ];
+    });
 
-    const totalRow = [
-      '', '', '', '', 'TOTAL', '', '',
-      filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
-      '',
-      filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
-      filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
-      filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
-      '', ''
-    ];
+    const totalRow = viewMode === 'stock'
+      ? [
+          '', '', '', '', 'TOTAL', '', '',
+          filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
+        ]
+      : [
+          '', '', '', '', 'TOTAL', '', '',
+          filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
+          '',
+          filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
+          filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+          filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
+          '', ''
+        ];
 
     const allData = [...headerData, colHeaders, ...dataRows, totalRow];
     const ws = XLSX.utils.aoa_to_sheet(allData);
 
-    ws['!cols'] = [
-      { wch: 4 }, { wch: 10 }, { wch: 6 }, { wch: 12 }, { wch: 35 }, { wch: 16 },
-      { wch: 18 }, { wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 11 },
-      { wch: 10 }, { wch: 14 }
-    ];
+    ws['!cols'] = viewMode === 'stock'
+      ? [
+          { wch: 4 }, { wch: 10 }, { wch: 6 }, { wch: 12 }, { wch: 35 }, { wch: 16 },
+          { wch: 18 }, { wch: 10 }
+        ]
+      : [
+          { wch: 4 }, { wch: 10 }, { wch: 6 }, { wch: 12 }, { wch: 35 }, { wch: 16 },
+          { wch: 18 }, { wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 11 },
+          { wch: 10 }, { wch: 14 }
+        ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Book Orders');
     XLSX.writeFile(wb, getExportFileName('xlsx'));
@@ -104,22 +125,40 @@ export default function RightSidebar() {
     doc.setFontSize(9);
     doc.text(`School: ${schoolName || 'N/A'}    |    Academic Year: ${academicYear}    |    Prepared by: ${userData?.name || 'Unknown'}    |    Date: ${new Date().toLocaleDateString()}`, margin, margin + 12);
 
-    const headers = [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
-    const rows = filteredBooks.map((b, idx) => [
-      idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
-      b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
-      b.currentStock || 0, b.orderQty || 0, b.format, b.type
-    ]);
+    const headers = viewMode === 'stock'
+      ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Stock']]
+      : [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
+    
+    const rows = filteredBooks.map((b, idx) => {
+      if (viewMode === 'stock') {
+        return [
+          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+          b.currentStock || 0
+        ];
+      }
+      return [
+        idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+        b.nextYearStudents || 0, `${b.projectionPct || 0}%`, b.projectedRequired || 0,
+        b.currentStock || 0, b.orderQty || 0, b.format, b.type
+      ];
+    });
 
-    rows.push([
-      '', '', '', '', 'TOTAL', '', '',
-      filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
-      '',
-      filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
-      filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
-      filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
-      '', ''
-    ]);
+    if (viewMode === 'stock') {
+      rows.push([
+        '', '', '', '', 'TOTAL', '', '',
+        filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
+      ]);
+    } else {
+      rows.push([
+        '', '', '', '', 'TOTAL', '', '',
+        filteredBooks.reduce((s, b) => s + (Number(b.nextYearStudents) || 0), 0),
+        '',
+        filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
+        filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+        filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0),
+        '', ''
+      ]);
+    }
 
     autoTable(doc, {
       head: headers,
@@ -186,6 +225,7 @@ export default function RightSidebar() {
   });
 
   const totalOrder = filteredBooks.reduce((sum, b) => sum + (Number(b.orderQty) || 0), 0);
+  const totalStock = filteredBooks.reduce((sum, b) => sum + (Number(b.currentStock) || 0), 0);
 
   const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
     American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
@@ -284,8 +324,8 @@ export default function RightSidebar() {
           <div className="text-xs text-blue-500">Entries</div>
         </div>
         <div className="bg-orange-50 rounded-xl p-3 text-center">
-          <div className="text-xl font-bold text-orange-700">{totalOrder}</div>
-          <div className="text-xs text-orange-500">Final Order Qty</div>
+          <div className="text-xl font-bold text-orange-700">{viewMode === 'stock' ? totalStock : totalOrder}</div>
+          <div className="text-xs text-orange-500">{viewMode === 'stock' ? 'Total Stock' : 'Final Order Qty'}</div>
         </div>
       </div>
       </div>

@@ -52,6 +52,8 @@ interface OrderContextType {
   setFilterSubject: React.Dispatch<React.SetStateAction<string>>;
   groupBy: 'none' | 'grade' | 'subject';
   setGroupBy: React.Dispatch<React.SetStateAction<'none' | 'grade' | 'subject'>>;
+  viewMode: 'order' | 'stock';
+  setViewMode: React.Dispatch<React.SetStateAction<'order' | 'stock'>>;
   isAutoSaving: boolean;
 }
 
@@ -68,6 +70,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [filterGrade, setFilterGrade] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject'>('none');
+  const [viewMode, setViewMode] = useState<'order' | 'stock'>('order');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   useEffect(() => {
@@ -133,7 +136,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <OrderContext.Provider value={{ 
       currentOrder, books, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
-      groupBy, setGroupBy, isAutoSaving
+      groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving
     }}>
       {children}
     </OrderContext.Provider>
