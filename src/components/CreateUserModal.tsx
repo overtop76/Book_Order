@@ -71,7 +71,11 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
       setGeneratedPassword(newPassword);
       onUserCreated();
     } catch (err: any) {
-      setError(err.message || 'Failed to create user');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already in use by a previously deleted user. To restore them, please ask the user to go to the login screen, click "Forgot Password", and log in. They will then reappear in your Admin Panel where you can restore their permissions.');
+      } else {
+        setError(err.message || 'Failed to create user');
+      }
     } finally {
       setLoading(false);
     }

@@ -17,6 +17,7 @@ interface User {
   programs?: string[];
   grades?: string[];
   subjects?: string[];
+  isDeleted?: boolean;
 }
 
 export default function AdminPanel() {
@@ -34,7 +35,9 @@ export default function AdminPanel() {
   const fetchUsers = async () => {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
-      const usersList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+      const usersList = snapshot.docs
+        .map(doc => ({ uid: doc.id, ...doc.data() } as User))
+        .filter(u => !u.isDeleted);
       setUsers(usersList);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -64,7 +67,7 @@ export default function AdminPanel() {
   const handleDeleteUser = async (uid: string, email: string) => {
     if (window.confirm(`Are you sure you want to permanently delete the user ${email}? Their data will remain, but they will lose all access.`)) {
       try {
-        await deleteDoc(doc(db, 'users', uid));
+        await updateDoc(doc(db, 'users', uid), { isDeleted: true, isActive: false });
         alert(`User ${email} deleted successfully.`);
         fetchUsers();
       } catch (error: any) {
