@@ -161,7 +161,7 @@ service cloud.firestore {
                     areImmutableFieldsUnchanged(['uid', 'email', 'createdAt']) &&
                     (
                       isAdmin() || 
-                      (isOwner(userId) && areImmutableFieldsUnchanged(['role', 'programs', 'grades', 'isActive']))
+                      (isOwner(userId) && areImmutableFieldsUnchanged(['role', 'programs', 'grades']) && (request.resource.data.isActive == true || areImmutableFieldsUnchanged(['isActive'])))
                     );
                     
       allow delete: if isAdmin();

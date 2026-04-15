@@ -55,11 +55,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await updateDoc(userDocRef, { isActive: true, role: 'admin' });
               setUserData(updatedData as UserData);
             }
-            // If the user was soft-deleted, restore them as an inactive viewer
-            else if ((data as any).isDeleted) {
-              const updatedData = { ...data, isDeleted: false, isActive: false, role: 'viewer' };
-              await updateDoc(userDocRef, { isDeleted: false, isActive: false, role: 'viewer' });
+            // Auto-activate any user who is inactive
+            else if (!data.isActive) {
+              const updatedData = { ...data, isActive: true };
               setUserData(updatedData as UserData);
+              try {
+                await updateDoc(userDocRef, { isActive: true });
+              } catch (e) {
+                console.error("Failed to auto-activate user", e);
+              }
+            }
+            // If the user was soft-deleted, restore them as an active viewer
+            else if ((data as any).isDeleted) {
+              const updatedData = { ...data, isDeleted: false, isActive: true, role: 'viewer' };
+              setUserData(updatedData as UserData);
+              try {
+                await updateDoc(userDocRef, { isDeleted: false, isActive: true, role: 'viewer' });
+              } catch (e) {
+                console.error("Failed to restore soft-deleted user", e);
+              }
             } else {
               setUserData(data);
             }
@@ -71,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: firebaseUser.displayName || 'New User',
               email: firebaseUser.email || '',
               role: isFirstUser ? 'admin' : 'viewer',
-              isActive: isFirstUser ? true : false,
+              isActive: true, // Always active now
               createdAt: new Date().toISOString(),
             };
             await setDoc(userDocRef, newUserData);

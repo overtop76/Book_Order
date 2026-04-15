@@ -11,7 +11,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 
   if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (!userData?.isActive) return <div className="flex items-center justify-center min-h-screen">Your account is pending activation.</div>;
   if (requireAdmin && !isAdmin) return <Navigate to="/" />;
 
   return <>{children}</>;
