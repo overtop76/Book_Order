@@ -132,7 +132,10 @@ service cloud.firestore {
              (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 50)) &&
              (!('schoolName' in data) || (data.schoolName is string && data.schoolName.size() <= 200)) &&
              (!('books' in data) || (data.books is string && data.books.size() <= 1000000)) && // 1MB limit for JSON string
-             (!('customSubjects' in data) || (data.customSubjects is string && data.customSubjects.size() <= 50000));
+             (!('customSubjects' in data) || (data.customSubjects is string && data.customSubjects.size() <= 50000)) &&
+             (!('creatorPrograms' in data) || (data.creatorPrograms is list && data.creatorPrograms.size() <= 10)) &&
+             (!('creatorGrades' in data) || (data.creatorGrades is list && data.creatorGrades.size() <= 30)) &&
+             (!('creatorSubjects' in data) || (data.creatorSubjects is list && data.creatorSubjects.size() <= 50));
     }
 
     function isValidAuditLog(data) {

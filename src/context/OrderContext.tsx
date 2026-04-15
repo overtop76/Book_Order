@@ -33,6 +33,9 @@ export interface Order {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  creatorPrograms?: string[];
+  creatorGrades?: string[];
+  creatorSubjects?: string[];
 }
 
 interface OrderContextType {
@@ -93,12 +96,46 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const q = query(collection(db, 'orders'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ordersList = snapshot.docs.map(doc => doc.data() as Order);
-      // Filter orders based on role if needed. Viewers and Editors can read all in our rules.
-      setOrders(ordersList);
+      
+      let filteredOrders = ordersList;
+      
+      if (userData) {
+        const userPrograms = userData.programs || [];
+        const userGrades = userData.grades || [];
+        const userSubjects = userData.subjects || [];
+        
+        const hasSpecificPermissions = userPrograms.length > 0 || userGrades.length > 0 || userSubjects.length > 0;
+        
+        if (hasSpecificPermissions) {
+          filteredOrders = ordersList.filter(order => {
+            // Always see own orders
+            if (order.createdBy === user.uid) return true;
+            
+            const orderPrograms = order.creatorPrograms || [];
+            const orderGrades = order.creatorGrades || [];
+            const orderSubjects = order.creatorSubjects || [];
+            
+            // If the order creator has NO specific permissions, they are a super admin, so everyone can see their orders?
+            // Or maybe only if they share a permission. Let's check if they share ANY permission.
+            const sharesProgram = userPrograms.some(p => orderPrograms.includes(p));
+            const sharesGrade = userGrades.some(g => orderGrades.includes(g));
+            const sharesSubject = userSubjects.some(s => orderSubjects.includes(s));
+            
+            // If the order creator is a super admin (no permissions set), let's allow everyone to see it, 
+            // OR we can restrict it. The prompt says "view all entered orders by other Admins having the same permission".
+            // So if they share a permission, they can see it.
+            const creatorIsSuperAdmin = orderPrograms.length === 0 && orderGrades.length === 0 && orderSubjects.length === 0;
+            
+            return sharesProgram || sharesGrade || sharesSubject || creatorIsSuperAdmin;
+          });
+        }
+      }
+      
+      setOrders(filteredOrders);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, userData]);
 
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
     if (!user) return;
@@ -116,6 +153,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createdBy: user.uid,
         createdAt: currentOrder?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        creatorPrograms: userData?.programs || [],
+        creatorGrades: userData?.grades || [],
+        creatorSubjects: userData?.subjects || [],
       };
 
       await setDoc(doc(db, 'orders', orderId), newOrder);
