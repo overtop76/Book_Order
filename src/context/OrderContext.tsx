@@ -28,8 +28,8 @@ export interface Order {
   grade?: string;
   academicYear?: string;
   schoolName?: string;
-  books: string; // JSON stringified Book[]
-  customSubjects: string; // JSON stringified string[]
+  books: Book[];
+  customSubjects: string[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -138,7 +138,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [user, userData]);
 
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
-    if (!user) return;
+    if (!user || !userData || userData.role === 'viewer') return;
+    
+    // Editors cannot update orders created by others
+    if (currentOrder && userData.role === 'editor' && currentOrder.createdBy !== user.uid) {
+      return;
+    }
     
     setIsAutoSaving(true);
     try {
@@ -148,19 +153,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         name,
         academicYear,
         schoolName,
-        books: JSON.stringify(books),
-        customSubjects: JSON.stringify(customSubjects),
-        createdBy: user.uid,
+        books: books,
+        customSubjects: customSubjects,
+        createdBy: currentOrder?.createdBy || user.uid,
         createdAt: currentOrder?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        creatorPrograms: userData?.programs || [],
-        creatorGrades: userData?.grades || [],
-        creatorSubjects: userData?.subjects || [],
+        creatorPrograms: currentOrder?.creatorPrograms || userData?.programs || [],
+        creatorGrades: currentOrder?.creatorGrades || userData?.grades || [],
+        creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
       };
 
       await setDoc(doc(db, 'orders', orderId), newOrder);
       setCurrentOrder(newOrder);
       setLastSavedAt(new Date());
+    } catch (error) {
+      console.error("Error saving order:", error);
     } finally {
       setIsAutoSaving(false);
     }
@@ -194,8 +201,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const order = orders.find(o => o.id === orderId);
     if (order) {
       setCurrentOrder(order);
-      setBooks(JSON.parse(order.books));
-      setCustomSubjects(order.customSubjects ? JSON.parse(order.customSubjects) : []);
+      setBooks(Array.isArray(order.books) ? order.books : JSON.parse(order.books || '[]'));
+      setCustomSubjects(Array.isArray(order.customSubjects) ? order.customSubjects : (order.customSubjects ? JSON.parse(order.customSubjects) : []));
       setOrderName(order.name || '');
       setAcademicYear(order.academicYear || '2026-2027');
       setSchoolName(order.schoolName || '');
