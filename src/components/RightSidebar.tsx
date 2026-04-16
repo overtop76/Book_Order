@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
 
 export default function RightSidebar() {
   const { 
-    books, setBooks, saveOrder, orders, loadOrder,
+    books, visibleBooks, setBooks, saveOrder, orders, loadOrder,
     filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
     viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt
   } = useOrder();
@@ -31,7 +31,7 @@ export default function RightSidebar() {
   };
 
   const handleExportExcel = () => {
-    const filteredBooks = books.filter(b => {
+    const filteredBooks = visibleBooks.filter(b => {
       if (filterProgram && b.program !== filterProgram) return false;
       if (filterGrade && b.grade !== filterGrade) return false;
       if (filterSubject && b.subject !== filterSubject) return false;
@@ -108,7 +108,7 @@ export default function RightSidebar() {
   };
 
   const handleExportPDF = () => {
-    const filteredBooks = books.filter(b => {
+    const filteredBooks = visibleBooks.filter(b => {
       if (filterProgram && b.program !== filterProgram) return false;
       if (filterGrade && b.grade !== filterGrade) return false;
       if (filterSubject && b.subject !== filterSubject) return false;
@@ -185,8 +185,8 @@ export default function RightSidebar() {
   };
 
   const handleExportJSON = () => {
-    if (books.length === 0) return alert('No data to export');
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));
+    if (visibleBooks.length === 0) return alert('No data to export');
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(visibleBooks, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", getExportFileName('json'));
@@ -206,7 +206,9 @@ export default function RightSidebar() {
         if (Array.isArray(importedBooks)) {
           const valid = importedBooks.every(b => b.id && b.title && b.program);
           if (valid) {
-            setBooks(importedBooks);
+            // Keep books that the user doesn't have permission to see
+            const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
+            setBooks([...hiddenBooks, ...importedBooks]);
             alert('Data imported successfully!');
           } else {
             alert('Invalid JSON format. Missing required fields.');

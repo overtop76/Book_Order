@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { collection, doc, setDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
@@ -41,6 +41,7 @@ export interface Order {
 interface OrderContextType {
   currentOrder: Order | null;
   books: Book[];
+  visibleBooks: Book[];
   setBooks: React.Dispatch<React.SetStateAction<Book[]>>;
   customSubjects: string[];
   setCustomSubjects: React.Dispatch<React.SetStateAction<string[]>>;
@@ -210,9 +211,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const visibleBooks = useMemo(() => {
+    if (!userData) return books;
+    const allowedPrograms = userData.programs || [];
+    const allowedGrades = userData.grades || [];
+    const allowedSubjects = userData.subjects || [];
+
+    return books.filter(b => {
+      if (allowedPrograms.length > 0 && !allowedPrograms.includes(b.program)) return false;
+      if (allowedGrades.length > 0 && !allowedGrades.includes(b.grade)) return false;
+      if (allowedSubjects.length > 0 && !allowedSubjects.includes(b.subject)) return false;
+      return true;
+    });
+  }, [books, userData]);
+
   return (
     <OrderContext.Provider value={{ 
-      currentOrder, books, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
+      currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
       groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
       orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt

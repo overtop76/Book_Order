@@ -5,7 +5,7 @@ import { Trash2, Copy, Edit2 } from 'lucide-react';
 import EditBookModal from './EditBookModal';
 
 export default function DataTable() {
-  const { books, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode } = useOrder();
+  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
@@ -33,7 +33,7 @@ export default function DataTable() {
     return Array.from(all);
   };
 
-  const filteredBooks = books.filter(b => {
+  const filteredBooks = visibleBooks.filter(b => {
     if (filterProgram && b.program !== filterProgram) return false;
     if (filterGrade && b.grade !== filterGrade) return false;
     if (filterSubject && b.subject !== filterSubject) return false;
