@@ -339,6 +339,7 @@ export default function LeftSidebar() {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Projection %</label>
                 <select value={projectionPct} onChange={e => setProjectionPct(parseInt(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                  <option value={0}>0%</option>
                   <option value={5}>5%</option>
                   <option value={10}>10%</option>
                   <option value={20}>20%</option>

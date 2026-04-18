@@ -163,7 +163,13 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Projection %</label>
-              <input type="number" name="projectionPct" value={formData.projectionPct} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <select name="projectionPct" value={formData.projectionPct} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                <option value={0}>0%</option>
+                <option value={5}>5%</option>
+                <option value={10}>10%</option>
+                <option value={20}>20%</option>
+                <option value={25}>25%</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
