@@ -11,7 +11,7 @@ const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
 };
 
 export default function LeftSidebar() {
-  const { books, setBooks, customSubjects, setCustomSubjects } = useOrder();
+  const { books, setBooks, customSubjects, setCustomSubjects, isLocked } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
@@ -368,10 +368,10 @@ export default function LeftSidebar() {
 
           <button 
             onClick={handleAddBook}
-            disabled={!selectedProgram || !selectedGrade || !title || isViewer}
+            disabled={!selectedProgram || !selectedGrade || !title || isViewer || isLocked}
             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2.5 rounded-xl font-semibold text-sm transition shadow-sm mt-4"
           >
-            {isViewer ? 'View Only Mode' : 'Add Book to Order'}
+            {isViewer ? 'View Only Mode' : isLocked ? 'Locked (Final Version)' : 'Add Book to Order'}
           </button>
         </div>
       </div>

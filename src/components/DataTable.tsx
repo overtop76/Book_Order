@@ -5,7 +5,7 @@ import { Trash2, Copy, Edit2 } from 'lucide-react';
 import EditBookModal from './EditBookModal';
 
 export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
-  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode } = useOrder();
+  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
@@ -120,7 +120,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
           <td className="px-3 py-3 text-xs text-gray-600">{b.isbn}</td>
           <td className="px-3 py-3 text-xs text-gray-600">{b.publisher}</td>
           <td className="px-3 py-3 text-right text-xs font-bold text-gray-900">
-            {isViewer ? b.currentStock : (
+            {isViewer || isLocked ? b.currentStock : (
               <input 
                 type="number" 
                 value={b.currentStock} 
@@ -133,7 +133,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
       ) : (
         <>
           <td className="px-3 py-3 text-center text-xs font-medium text-gray-700">
-            {isViewer ? b.nextYearStudents : (
+            {isViewer || isLocked ? b.nextYearStudents : (
               <input 
                 type="number" 
                 value={b.nextYearStudents} 
@@ -144,7 +144,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
           </td>
           <td className="px-3 py-3 text-right text-xs font-medium text-blue-700">{b.projectedRequired}</td>
           <td className="px-3 py-3 text-right text-xs">
-            {isViewer ? b.currentStock : (
+            {isViewer || isLocked ? b.currentStock : (
               <input 
                 type="number" 
                 value={b.currentStock} 
@@ -158,7 +158,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
           </td>
         </>
       )}
-      {(!isViewer && activeTab === 'entry') && (
+      {(!isViewer && !isLocked && activeTab === 'entry') && (
         <td className="px-3 py-3 text-center whitespace-nowrap flex justify-center gap-2">
           <button onClick={() => setEditingBook(b)} className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-md" title="Edit">
             <Edit2 className="w-3.5 h-3.5" />
@@ -237,7 +237,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
           </div>
         </div>
         
-        {!isViewer && selectedBooks.length > 0 && activeTab === 'entry' && (
+        {!isViewer && !isLocked && selectedBooks.length > 0 && activeTab === 'entry' && (
           <button 
             onClick={handleDeleteSelected}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-semibold transition"
@@ -254,7 +254,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
           <table className="min-w-max w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                {!isViewer && activeTab === 'entry' && (
+                {!isViewer && !isLocked && activeTab === 'entry' && (
                   <th className="px-3 py-3 text-left w-10">
                     <input 
                       type="checkbox" 

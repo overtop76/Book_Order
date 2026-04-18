@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
 
 export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' | 'orders' }) {
   const { 
-    books, visibleBooks, setBooks, saveOrder,
+    books, visibleBooks, setBooks, saveOrder, isLocked,
     filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
     viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
     orderStatus, setOrderStatus
@@ -20,6 +20,13 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
 
   const handleSave = async () => {
     if (!orderName) return alert('Please enter an order name');
+
+    if (orderStatus === 'Approved' || orderStatus === 'Submitted to Vendor') {
+      if (!window.confirm(`Are you sure you want to save this order as ${orderStatus}?\n\nThis is a final approved version that cannot be deleted or changed by you afterwards.`)) {
+        return;
+      }
+    }
+    
     await saveOrder(orderName, academicYear, schoolName);
     alert('Order saved successfully!');
   };
@@ -350,11 +357,13 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
         </div>
       )}
 
-      {activeTab === 'entry' && (
+      {(activeTab === 'entry' || activeTab === 'review') && (
         <div className="p-4 flex-shrink-0">
-          <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Save & Manage</div>
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-3 text-center">
+            {isLocked ? <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">LOCKED (Final Version)</span> : 'Save & Manage'}
+          </div>
           <div className="space-y-3">
-            {!isViewer && (
+            {!isViewer && !isLocked && (
               <div>
                 <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2" placeholder="Order Name (e.g., Fall 2026)" />
                 <select value={orderStatus} onChange={e => setOrderStatus(e.target.value as any)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2">
@@ -370,15 +379,15 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
               </div>
             )}
             
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button onClick={() => fileInputRef.current?.click()} className="col-span-2 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
+            <div className={`grid grid-cols-2 gap-2 ${isLocked || isViewer ? '' : 'pt-2'}`}>
+              <button onClick={() => fileInputRef.current?.click()} disabled={isLocked} className={`col-span-2 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition ${isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
                 <Upload className="w-3.5 h-3.5" />
                 Import JSON
               </button>
-              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" />
+              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" disabled={isLocked} />
             </div>
 
-            {!isViewer && (
+            {!isViewer && !isLocked && (
               <button onClick={handleClearAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-medium transition">
                 <Trash2 className="w-4 h-4" />
                 Clear All Data

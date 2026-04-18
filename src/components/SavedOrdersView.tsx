@@ -47,7 +47,7 @@ export default function SavedOrdersView({ onOrderLoaded }: { onOrderLoaded: () =
                   >
                     Load Data
                   </button>
-                  {order.createdBy === userData?.uid ? (
+                  {((order.createdBy === userData?.uid && (order.status !== 'Approved' && order.status !== 'Submitted to Vendor')) || userData?.role === 'admin') ? (
                     <button 
                       onClick={() => {
                         if (confirm(`Are you sure you want to permanently delete "${order.name}"?`)) {

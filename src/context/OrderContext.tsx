@@ -72,12 +72,13 @@ interface OrderContextType {
   lastSavedAt: Date | null;
   orderStatus: OrderStatus;
   setOrderStatus: React.Dispatch<React.SetStateAction<OrderStatus>>;
+  isLocked: boolean;
 }
 
 const OrderContext = createContext<OrderContextType | null>(null);
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, userData } = useAuth();
+  const { user, userData, isAdmin } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -145,9 +146,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => unsubscribe();
   }, [user, userData]);
 
+  const isLocked = Boolean(currentOrder?.status && ['Approved', 'Submitted to Vendor'].includes(currentOrder.status) && !isAdmin);
+
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
     if (!user || !userData || userData.role === 'viewer') return;
     
+    // Check if the current order is locked for this user
+    if (isLocked) {
+      return; 
+    }
+
     // Editors cannot update orders created by others
     if (currentOrder && userData.role === 'editor' && currentOrder.createdBy !== user.uid) {
       return;
@@ -187,8 +195,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const orderToDelete = orders.find(o => o.id === orderId);
     if (!orderToDelete) return;
     
-    // Check if the user owns the order
-    if (orderToDelete.createdBy !== user.uid) {
+    if (['Approved', 'Submitted to Vendor'].includes(orderToDelete.status || '') && !isAdmin) {
+      alert("This order is final and cannot be deleted.");
+      return;
+    }
+
+    // Check if the user owns the order (Admins bypass)
+    if (orderToDelete.createdBy !== user.uid && !isAdmin) {
       alert("You can only delete your own orders.");
       return;
     }
@@ -266,7 +279,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
       groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
       orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
-      orderStatus, setOrderStatus
+      orderStatus, setOrderStatus, isLocked
     }}>
       {children}
     </OrderContext.Provider>
