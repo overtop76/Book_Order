@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
-import { collection, doc, setDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 
@@ -21,6 +21,8 @@ export interface Book {
   addedAt: string;
 }
 
+export type OrderStatus = 'Draft' | 'Under Review' | 'Approved' | 'Submitted to Vendor';
+
 export interface Order {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ export interface Order {
   grade?: string;
   academicYear?: string;
   schoolName?: string;
+  status?: OrderStatus;
   books: Book[];
   customSubjects: string[];
   createdBy: string;
@@ -46,6 +49,7 @@ interface OrderContextType {
   customSubjects: string[];
   setCustomSubjects: React.Dispatch<React.SetStateAction<string[]>>;
   saveOrder: (name: string, academicYear: string, schoolName: string) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
   loadOrder: (orderId: string) => void;
   orders: Order[];
   filterProgram: string;
@@ -66,6 +70,8 @@ interface OrderContextType {
   schoolName: string;
   setSchoolName: React.Dispatch<React.SetStateAction<string>>;
   lastSavedAt: Date | null;
+  orderStatus: OrderStatus;
+  setOrderStatus: React.Dispatch<React.SetStateAction<OrderStatus>>;
 }
 
 const OrderContext = createContext<OrderContextType | null>(null);
@@ -87,6 +93,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [schoolName, setSchoolName] = useState('');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>('Draft');
 
   const saveOrderRef = useRef<any>(null);
 
@@ -154,6 +161,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         name,
         academicYear,
         schoolName,
+        status: orderStatus,
         books: books,
         customSubjects: customSubjects,
         createdBy: currentOrder?.createdBy || user.uid,
@@ -171,6 +179,32 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error("Error saving order:", error);
     } finally {
       setIsAutoSaving(false);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (!user) return;
+    const orderToDelete = orders.find(o => o.id === orderId);
+    if (!orderToDelete) return;
+    
+    // Check if the user owns the order
+    if (orderToDelete.createdBy !== user.uid) {
+      alert("You can only delete your own orders.");
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+      if (currentOrder?.id === orderId) {
+        // Clear current form if we deleted what we are viewing
+        setCurrentOrder(null);
+        setBooks([]);
+        setOrderName('');
+        setSchoolName('');
+        setOrderStatus('Draft');
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
     }
   };
 
@@ -207,6 +241,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setOrderName(order.name || '');
       setAcademicYear(order.academicYear || '2026-2027');
       setSchoolName(order.schoolName || '');
+      setOrderStatus(order.status || 'Draft');
       if (order.updatedAt) setLastSavedAt(new Date(order.updatedAt));
     }
   };
@@ -227,10 +262,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <OrderContext.Provider value={{ 
-      currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, loadOrder, orders,
+      currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, deleteOrder, loadOrder, orders,
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
       groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
-      orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt
+      orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
+      orderStatus, setOrderStatus
     }}>
       {children}
     </OrderContext.Provider>

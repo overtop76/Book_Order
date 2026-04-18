@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { useOrder } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
-import { Save, Download, FolderOpen, FileJson, Upload, Trash2 } from 'lucide-react';
+import { Save, Download, FileJson, Upload, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
+export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' | 'orders' }) {
   const { 
-    books, visibleBooks, setBooks, saveOrder, orders, loadOrder,
+    books, visibleBooks, setBooks, saveOrder,
     filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
-    viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt
+    viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
+    orderStatus, setOrderStatus
   } = useOrder();
   const { userData, isViewer } = useAuth();
   
@@ -350,12 +351,18 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       )}
 
       {activeTab === 'entry' && (
-        <div className="p-4 flex-1">
+        <div className="p-4 flex-shrink-0">
           <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Save & Manage</div>
           <div className="space-y-3">
             {!isViewer && (
               <div>
                 <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2" placeholder="Order Name (e.g., Fall 2026)" />
+                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value as any)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2">
+                  <option value="Draft">Draft</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Submitted to Vendor">Submitted to Vendor</option>
+                </select>
                 <button onClick={handleSave} className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium text-sm transition">
                   <Save className="w-4 h-4" />
                   Save Order to Database
@@ -406,24 +413,6 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
               <FileJson className="w-3.5 h-3.5" />
               Export JSON
             </button>
-          </div>
-        </div>
-      )}
-
-      {orders.length > 0 && activeTab === 'entry' && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Load Saved Order</div>
-          <div className="space-y-2">
-            {orders.map(o => (
-              <button 
-                key={o.id} 
-                onClick={() => loadOrder(o.id)}
-                className="w-full flex items-center gap-2 p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-left text-sm text-gray-700"
-              >
-                <FolderOpen className="w-4 h-4 text-blue-500" />
-                <span className="truncate">{o.name}</span>
-              </button>
-            ))}
           </div>
         </div>
       )}

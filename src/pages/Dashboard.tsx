@@ -9,11 +9,13 @@ import DataTable from '../components/DataTable';
 import RightSidebar from '../components/RightSidebar';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import { useOrder } from '../context/OrderContext';
+import SavedOrdersView from '../components/SavedOrdersView';
+import { FolderOpen } from 'lucide-react';
 
 export default function Dashboard() {
   const { userData, isAdmin } = useAuth();
   const { isAutoSaving, currentOrder, lastSavedAt, books } = useOrder();
-  const [activeTab, setActiveTab] = useState<'entry' | 'review' | 'export'>('entry');
+  const [activeTab, setActiveTab] = useState<'entry' | 'review' | 'export' | 'orders'>('entry');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -54,6 +56,14 @@ export default function Dashboard() {
             >
               Export
             </button>
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-white shadow-sm text-blue-700' : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'}`}
+            >
+              <FolderOpen className="w-4 h-4" />
+              Saved Orders
+            </button>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -85,9 +95,15 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {activeTab === 'entry' && <LeftSidebar />}
-        <DataTable />
-        <RightSidebar activeTab={activeTab} />
+        {activeTab === 'orders' ? (
+          <SavedOrdersView onOrderLoaded={() => setActiveTab('entry')} />
+        ) : (
+          <>
+            {activeTab === 'entry' && <LeftSidebar />}
+            <DataTable />
+            <RightSidebar activeTab={activeTab} />
+          </>
+        )}
       </div>
       <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </div>
