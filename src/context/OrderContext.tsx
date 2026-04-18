@@ -138,6 +138,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return sharesProgram || sharesGrade || sharesSubject || creatorIsSuperAdmin;
           });
         }
+        
+        // Final override: hide deleted creator's orders if current user is not an admin
+        if (userData.role !== 'admin') {
+          filteredOrders = filteredOrders.filter(order => !(order as any).isCreatorDeleted);
+        }
       }
       
       setOrders(filteredOrders);

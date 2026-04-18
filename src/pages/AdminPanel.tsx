@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
 import { KeyRound, Shield } from 'lucide-react';
@@ -65,9 +65,23 @@ export default function AdminPanel() {
   };
 
   const handleDeleteUser = async (uid: string, email: string) => {
-    if (window.confirm(`Are you sure you want to permanently delete the user ${email}? Their data will remain, but they will lose all access.`)) {
+    if (window.confirm(`Are you sure you want to permanently delete the user ${email} from the database? Their data will remain, but they will lose all access.`)) {
       try {
-        await updateDoc(doc(db, 'users', uid), { isDeleted: true, isActive: false });
+        await deleteDoc(doc(db, 'users', uid));
+
+        // Mark their orders as created by a deleted user
+        const ordersRef = collection(db, 'orders');
+        const q = query(ordersRef, where('createdBy', '==', uid));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+          const batch = writeBatch(db);
+          snapshot.docs.forEach(docSnap => {
+            batch.update(docSnap.ref, { isCreatorDeleted: true });
+          });
+          await batch.commit();
+        }
+
         alert(`User ${email} deleted successfully.`);
         fetchUsers();
       } catch (error: any) {
@@ -156,7 +170,7 @@ export default function AdminPanel() {
                       >
                         {u.isActive ? 'Deactivate' : 'Activate'}
                       </button>
-                      {!u.isActive && u.uid !== user?.uid && (
+                      {u.uid !== user?.uid && (
                         <button
                           onClick={() => handleDeleteUser(u.uid, u.email)}
                           className="text-red-600 hover:text-red-900 font-medium"

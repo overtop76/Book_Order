@@ -49,47 +49,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (userDoc.exists()) {
             const data = userDoc.data() as UserData;
             
-            // Auto-upgrade the main admin if they got stuck as inactive
-            if (firebaseUser.email === 'ahmed.g.lotfy76@gmail.com' && (!data.isActive || data.role !== 'admin')) {
-              const updatedData = { ...data, isActive: true, role: 'admin' };
+            // Auto-upgrade the main admin if they got stuck
+            if ((firebaseUser.email === 'admin@admin.com' || firebaseUser.email === 'ahmed.g.lotfy76@gmail.com') && (!data.isActive || data.role !== 'admin')) {
+              const updatedData = { ...data, isActive: true, role: 'admin' as const };
               await updateDoc(userDocRef, { isActive: true, role: 'admin' });
               setUserData(updatedData as UserData);
-            }
-            // Auto-activate any user who is inactive
-            else if (!data.isActive) {
-              const updatedData = { ...data, isActive: true };
-              setUserData(updatedData as UserData);
-              try {
-                await updateDoc(userDocRef, { isActive: true });
-              } catch (e) {
-                console.error("Failed to auto-activate user", e);
-              }
-            }
-            // If the user was soft-deleted, restore them as an active viewer
-            else if ((data as any).isDeleted) {
-              const updatedData = { ...data, isDeleted: false, isActive: true, role: 'viewer' };
-              setUserData(updatedData as UserData);
-              try {
-                await updateDoc(userDocRef, { isDeleted: false, isActive: true, role: 'viewer' });
-              } catch (e) {
-                console.error("Failed to restore soft-deleted user", e);
-              }
+            } else if (!data.isActive) {
+              const { signOut } = await import('firebase/auth');
+              await signOut(auth);
+              setUserData(null);
+              setUser(null);
+              alert("Your account has been deactivated by an administrator.");
             } else {
               setUserData(data);
             }
           } else {
-            // Bootstrap first user or create new user
+            // Bootstrap first user
             const isFirstUser = firebaseUser.email === 'admin@admin.com' || firebaseUser.email === 'ahmed.g.lotfy76@gmail.com';
-            const newUserData: UserData = {
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName || 'New User',
-              email: firebaseUser.email || '',
-              role: isFirstUser ? 'admin' : 'viewer',
-              isActive: true, // Always active now
-              createdAt: new Date().toISOString(),
-            };
-            await setDoc(userDocRef, newUserData);
-            setUserData(newUserData);
+            
+            if (isFirstUser) {
+              const newUserData: UserData = {
+                uid: firebaseUser.uid,
+                name: firebaseUser.displayName || 'Admin',
+                email: firebaseUser.email || '',
+                role: 'admin',
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              };
+              await setDoc(userDocRef, newUserData);
+              setUserData(newUserData);
+            } else {
+              // User was deleted from the database
+              const { signOut } = await import('firebase/auth');
+              await signOut(auth);
+              setUserData(null);
+              setUser(null);
+              alert("Your account has been deleted by an administrator.");
+            }
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
