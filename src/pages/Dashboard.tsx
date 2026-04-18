@@ -85,9 +85,9 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <LeftSidebar />
+        {activeTab === 'entry' && <LeftSidebar />}
         <DataTable />
-        <RightSidebar />
+        <RightSidebar activeTab={activeTab} />
       </div>
       <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </div>

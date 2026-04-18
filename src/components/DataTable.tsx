@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Trash2, Copy, Edit2 } from 'lucide-react';
 import EditBookModal from './EditBookModal';
 
-export default function DataTable() {
+export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
   const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
@@ -93,7 +93,7 @@ export default function DataTable() {
 
   const renderBookRow = (b: Book) => (
     <tr key={b.id} className={`hover:bg-blue-50/50 ${selectedBooks.includes(b.id) ? 'bg-blue-50/30' : ''}`}>
-      {!isViewer && (
+      {!isViewer && activeTab === 'entry' && (
         <td className="px-3 py-3">
           <input 
             type="checkbox" 
@@ -158,7 +158,7 @@ export default function DataTable() {
           </td>
         </>
       )}
-      {!isViewer && (
+      {(!isViewer && activeTab === 'entry') && (
         <td className="px-3 py-3 text-center whitespace-nowrap flex justify-center gap-2">
           <button onClick={() => setEditingBook(b)} className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-md" title="Edit">
             <Edit2 className="w-3.5 h-3.5" />
@@ -187,7 +187,7 @@ export default function DataTable() {
     return Object.keys(groups).sort().map(key => (
       <React.Fragment key={key}>
         <tr className="bg-gray-100 border-y border-gray-200">
-          <td colSpan={isViewer ? (viewMode === 'stock' ? 7 : 8) : (viewMode === 'stock' ? 8 : 10)} className="px-4 py-2 text-xs font-bold text-gray-700 uppercase">
+          <td colSpan={(!isViewer && activeTab === 'entry') ? (viewMode === 'stock' ? 8 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-2 text-xs font-bold text-gray-700 uppercase">
             {groupBy === 'grade' ? 'Grade: ' : 'Subject: '} {key} ({groups[key].length} books)
           </td>
         </tr>
@@ -235,46 +235,9 @@ export default function DataTable() {
             <button onClick={() => setGroupBy('grade')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'grade' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>By Grade</button>
             <button onClick={() => setGroupBy('subject')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'subject' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>By Subject</button>
           </div>
-          
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            <select 
-              value={filterProgram} 
-              onChange={e => { setFilterProgram(e.target.value); setFilterGrade(''); setFilterSubject(''); }} 
-              className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white"
-            >
-              <option value="">All Programs</option>
-              {allowedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select 
-              value={filterGrade} 
-              onChange={e => setFilterGrade(e.target.value)} 
-              className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white"
-            >
-              <option value="">All Grades</option>
-              {getFilterGrades().map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <select 
-              value={filterSubject} 
-              onChange={e => setFilterSubject(e.target.value)} 
-              className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white"
-            >
-              <option value="">All Subjects</option>
-              {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select 
-              value={filterStock} 
-              onChange={e => setFilterStock(e.target.value)} 
-              className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white"
-            >
-              <option value="all">All Stock</option>
-              <option value="in-stock">In Stock (&gt; 0)</option>
-              <option value="out-of-stock">Out of Stock (0)</option>
-            </select>
-          </div>
         </div>
         
-        {!isViewer && selectedBooks.length > 0 && (
+        {!isViewer && selectedBooks.length > 0 && activeTab === 'entry' && (
           <button 
             onClick={handleDeleteSelected}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-semibold transition"
@@ -291,7 +254,7 @@ export default function DataTable() {
           <table className="min-w-max w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                {!isViewer && (
+                {!isViewer && activeTab === 'entry' && (
                   <th className="px-3 py-3 text-left w-10">
                     <input 
                       type="checkbox" 
@@ -319,13 +282,13 @@ export default function DataTable() {
                     <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Order</th>
                   </>
                 )}
-                {!isViewer && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>}
+                {!isViewer && activeTab === 'entry' && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredBooks.length === 0 ? (
                 <tr>
-                  <td colSpan={isViewer ? (viewMode === 'stock' ? 7 : 8) : (viewMode === 'stock' ? 8 : 10)} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={(!isViewer && activeTab === 'entry') ? (viewMode === 'stock' ? 8 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-12 text-center text-gray-400 text-sm">
                     No books found.
                   </td>
                 </tr>
@@ -336,7 +299,7 @@ export default function DataTable() {
             {filteredBooks.length > 0 && (
               <tfoot className="bg-green-50 border-t-2 border-green-500 font-bold">
                 <tr>
-                  {!isViewer && <td></td>}
+                  {!isViewer && activeTab === 'entry' && <td></td>}
                   <td colSpan={4} className="px-3 py-3 text-right text-sm text-gray-800">TOTAL</td>
                   {viewMode === 'stock' ? (
                     <>
@@ -351,7 +314,7 @@ export default function DataTable() {
                       <td className="px-3 py-3 text-right text-sm text-green-700">{totalOrder}</td>
                     </>
                   )}
-                  {!isViewer && <td></td>}
+                  {!isViewer && activeTab === 'entry' && <td></td>}
                 </tr>
               </tfoot>
             )}

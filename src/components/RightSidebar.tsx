@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export default function RightSidebar() {
+export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
   const { 
     books, visibleBooks, setBooks, saveOrder, orders, loadOrder,
     filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
@@ -264,139 +264,153 @@ export default function RightSidebar() {
 
   return (
     <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200 bg-blue-50/50">
-        <div className="font-bold text-blue-800 text-sm mb-4">Report Settings</div>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Academic Year</label>
-            <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">User Name</label>
-            <input type="text" value={userData?.name || ''} readOnly className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 font-bold" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">School Name</label>
-            <input type="text" value={schoolName} onChange={e => setSchoolName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" placeholder="Enter school name" />
+      {activeTab === 'export' && (
+        <div className="p-4 border-b border-gray-200 bg-blue-50/50">
+          <div className="font-bold text-blue-800 text-sm mb-4">Report Settings</div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Academic Year</label>
+              <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">User Name</label>
+              <input type="text" value={userData?.name || ''} readOnly className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">School Name</label>
+              <input type="text" value={schoolName} onChange={e => setSchoolName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" placeholder="Enter school name" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="p-4 border-b border-gray-200 bg-amber-50/50">
-        <div className="font-bold text-amber-800 text-sm mb-4">Filter & Preview</div>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Program</label>
-            <select 
-              value={filterProgram} 
-              onChange={e => { setFilterProgram(e.target.value); setFilterGrade(''); setFilterSubject(''); }} 
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+      {(activeTab === 'entry' || activeTab === 'export') && (
+        <div className="p-4 border-b border-gray-200 bg-amber-50/50">
+          <div className="font-bold text-amber-800 text-sm mb-4">Filter & Preview</div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Program</label>
+              <select 
+                value={filterProgram} 
+                onChange={e => { setFilterProgram(e.target.value); setFilterGrade(''); setFilterSubject(''); }} 
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+              >
+                <option value="">All Programs</option>
+                {allowedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Grade</label>
+                <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                  <option value="">All Grades</option>
+                  {getFilterGrades().map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
+                <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                  <option value="">All Subjects</option>
+                  {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
+                <select value={filterStock} onChange={e => setFilterStock(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                  <option value="all">All Stock</option>
+                  <option value="in-stock">In Stock (&gt; 0)</option>
+                  <option value="out-of-stock">Out of Stock (0)</option>
+                </select>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); setFilterStock('all'); }} 
+              className="w-full text-xs text-gray-500 hover:text-gray-700 py-1.5 rounded-lg hover:bg-gray-100 transition border border-gray-200 bg-white"
             >
-              <option value="">All Programs</option>
-              {allowedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+              ✕ Clear Filters
+            </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Grade</label>
-              <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
-                <option value="">All Grades</option>
-                {getFilterGrades().map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
-              <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
-                <option value="">All Subjects</option>
-                {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Current Stock</label>
-              <select value={filterStock} onChange={e => setFilterStock(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
-                <option value="all">All Stock</option>
-                <option value="in-stock">In Stock (&gt; 0)</option>
-                <option value="out-of-stock">Out of Stock (0)</option>
-              </select>
-            </div>
+        </div>
+      )}
+
+      {activeTab === 'export' && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Export Preview</div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="bg-blue-50 rounded-xl p-3 text-center">
+            <div className="text-xl font-bold text-blue-700">{filteredBooks.length}</div>
+            <div className="text-xs text-blue-500">Entries</div>
           </div>
-          <button 
-            onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); setFilterStock('all'); }} 
-            className="w-full text-xs text-gray-500 hover:text-gray-700 py-1.5 rounded-lg hover:bg-gray-100 transition border border-gray-200 bg-white"
-          >
-            ✕ Clear Filters
-          </button>
+          <div className="bg-orange-50 rounded-xl p-3 text-center">
+            <div className="text-xl font-bold text-orange-700">{viewMode === 'stock' ? totalStock : totalOrder}</div>
+            <div className="text-xs text-orange-500">{viewMode === 'stock' ? 'Total Stock' : 'Final Order Qty'}</div>
+          </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      <div className="p-4 border-b border-gray-200">
-        <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Export Preview</div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-blue-50 rounded-xl p-3 text-center">
-          <div className="text-xl font-bold text-blue-700">{filteredBooks.length}</div>
-          <div className="text-xs text-blue-500">Entries</div>
-        </div>
-        <div className="bg-orange-50 rounded-xl p-3 text-center">
-          <div className="text-xl font-bold text-orange-700">{viewMode === 'stock' ? totalStock : totalOrder}</div>
-          <div className="text-xs text-orange-500">{viewMode === 'stock' ? 'Total Stock' : 'Final Order Qty'}</div>
-        </div>
-      </div>
-      </div>
-
-      <div className="p-4 flex-1">
-        <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Save & Export</div>
-        <div className="space-y-3">
-          {!isViewer && (
-            <div>
-              <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2" placeholder="Order Name (e.g., Fall 2026)" />
-              <button onClick={handleSave} className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium text-sm transition">
-                <Save className="w-4 h-4" />
-                Save Order to Database
+      {activeTab === 'entry' && (
+        <div className="p-4 flex-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Save & Manage</div>
+          <div className="space-y-3">
+            {!isViewer && (
+              <div>
+                <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 mb-2" placeholder="Order Name (e.g., Fall 2026)" />
+                <button onClick={handleSave} className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium text-sm transition">
+                  <Save className="w-4 h-4" />
+                  Save Order to Database
+                </button>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button onClick={() => fileInputRef.current?.click()} className="col-span-2 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
+                <Upload className="w-3.5 h-3.5" />
+                Import JSON
               </button>
+              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" />
             </div>
-          )}
-          
-          <hr className="my-4 border-gray-200" />
-          
-          <button onClick={handleExportExcel} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-green-300 text-left group">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
-              <Download className="w-4 h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-gray-800 text-sm">Export Excel</div>
-            </div>
-          </button>
-          <button onClick={handleExportPDF} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-red-300 text-left group">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
-              <Download className="w-4 h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-gray-800 text-sm">Export PDF</div>
-            </div>
-          </button>
-          
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            <button onClick={handleExportJSON} className="flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
-              <FileJson className="w-3.5 h-3.5" />
-              JSON
-            </button>
-            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
-              <Upload className="w-3.5 h-3.5" />
-              Import
-            </button>
-            <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" />
+
+            {!isViewer && (
+              <button onClick={handleClearAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-medium transition">
+                <Trash2 className="w-4 h-4" />
+                Clear All Data
+              </button>
+            )}
           </div>
-
-          {!isViewer && (
-            <button onClick={handleClearAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-medium transition">
-              <Trash2 className="w-4 h-4" />
-              Clear All Data
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
-      {orders.length > 0 && (
+      {activeTab === 'export' && (
+        <div className="p-4 flex-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Export Formats</div>
+          <div className="space-y-3">
+            <button onClick={handleExportExcel} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-green-300 text-left group">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                <Download className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-800 text-sm">Export Excel</div>
+              </div>
+            </button>
+            <button onClick={handleExportPDF} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-red-300 text-left group">
+              <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                <Download className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-800 text-sm">Export PDF</div>
+              </div>
+            </button>
+            
+            <button onClick={handleExportJSON} className="w-full flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium transition">
+              <FileJson className="w-3.5 h-3.5" />
+              Export JSON
+            </button>
+          </div>
+        </div>
+      )}
+
+      {orders.length > 0 && activeTab === 'entry' && (
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Load Saved Order</div>
           <div className="space-y-2">
