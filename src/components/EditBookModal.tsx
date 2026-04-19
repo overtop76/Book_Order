@@ -146,11 +146,11 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
               )}
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Book Title</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Book Title *</label>
               <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">ISBN</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">ISBN {formData.format !== 'Booklet' && '*'}</label>
               <input type="text" name="isbn" value={formData.isbn} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
             <div>
@@ -181,6 +181,7 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
                 <option value="Hard Copy">Hard Copy</option>
                 <option value="Digital">Digital</option>
                 <option value="Both">Both</option>
+                <option value="Booklet">Booklet</option>
               </select>
             </div>
             <div>
@@ -198,7 +199,11 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             Cancel
           </button>
-          <button onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+          <button 
+            onClick={handleSave} 
+            disabled={!formData.title || (formData.format !== 'Booklet' && !formData.isbn.trim())}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
             <Save className="w-4 h-4" />
             Save Changes
           </button>

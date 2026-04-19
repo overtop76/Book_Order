@@ -225,7 +225,7 @@ export default function LeftSidebar() {
           <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                ISBN <span className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">Lookup</span>
+                ISBN {format !== 'Booklet' && '*'} <span className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">Lookup</span>
               </label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
@@ -317,6 +317,7 @@ export default function LeftSidebar() {
                 <option value="Hard Copy">Hard Copy</option>
                 <option value="Digital">Digital</option>
                 <option value="Both">Both</option>
+                <option value="Booklet">Booklet</option>
               </select>
             </div>
             <div>
@@ -368,7 +369,7 @@ export default function LeftSidebar() {
 
           <button 
             onClick={handleAddBook}
-            disabled={!selectedProgram || !selectedGrade || !title || isViewer || isLocked}
+            disabled={!selectedProgram || !selectedGrade || !title || (format !== 'Booklet' && !isbn.trim()) || isViewer || isLocked}
             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2.5 rounded-xl font-semibold text-sm transition shadow-sm mt-4"
           >
             {isViewer ? 'View Only Mode' : isLocked ? 'Locked (Final Version)' : 'Add Book to Order'}

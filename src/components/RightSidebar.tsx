@@ -63,7 +63,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Current Stock']
       : ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
-    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f;
+    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
     const typeAbbr = (t: string) => t === 'Student Copy' ? 'SC' : t === 'Teacher Edition' ? 'TE' : t === 'Resource Material' ? 'RM' : t;
 
     const dataRows = filteredBooks.map((b, idx) => {
@@ -139,7 +139,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Stock']]
       : [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
     
-    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f;
+    const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
     const typeAbbr = (t: string) => t === 'Student Copy' ? 'SC' : t === 'Teacher Edition' ? 'TE' : t === 'Resource Material' ? 'RM' : t;
 
     const rows = filteredBooks.map((b, idx) => {
@@ -186,7 +186,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     if (viewMode !== 'stock') {
       doc.setFontSize(7);
       doc.setTextColor(100);
-      doc.text('Abbreviations: HC = Hard Copy, D = Digital, B = Both | SC = Student Copy, TE = Teacher Edition, RM = Resource Material', margin, (doc as any).lastAutoTable.finalY + 10);
+      doc.text('Abbreviations: HC = Hard Copy, D = Digital, B = Both, Bkl = Booklet | SC = Student Copy, TE = Teacher Edition, RM = Resource Material', margin, (doc as any).lastAutoTable.finalY + 10);
     }
 
     doc.save(getExportFileName('pdf'));
