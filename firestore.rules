@@ -142,7 +142,7 @@ service cloud.firestore {
       return hasRequiredFields(['action', 'userId', 'timestamp']) &&
              data.action is string && data.action.size() > 0 && data.action.size() < 200 &&
              data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
-             isValidDateString(data.timestamp) &&
+             data.timestamp is timestamp &&
              (!('details' in data) || (data.details is string && data.details.size() <= 50000));
     }
 

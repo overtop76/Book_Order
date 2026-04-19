@@ -185,15 +185,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
       };
 
+      const isNewOrder = !currentOrder;
       const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
       
       await setDoc(doc(db, 'orders', orderId), newOrder);
       setCurrentOrder(newOrder);
       setLastSavedAt(new Date());
 
-      if (isStatusChange) {
-        const { logAction } = await import('../utils/auditLogger');
+      const { logAction } = await import('../utils/auditLogger');
+      if (isNewOrder) {
+        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'CREATE_ORDER', `Created new order: ${name}`);
+      } else if (isStatusChange) {
         await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER_STATUS', `Changed Order ${name} status to ${orderStatus}`);
+      } else {
+        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER', `Updated order: ${name}`);
       }
     } catch (error) {
       console.error("Error saving order:", error);
