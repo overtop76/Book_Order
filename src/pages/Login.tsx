@@ -19,9 +19,13 @@ export default function Login() {
     setLoading(true);
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const { logAction } = await import('../utils/auditLogger');
+        await logAction({ uid: cred.user.uid, email: cred.user.email || '', name: cred.user.displayName || '' }, 'REGISTER', 'User manually registered via login screen');
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const { logAction } = await import('../utils/auditLogger');
+        await logAction({ uid: cred.user.uid, email: cred.user.email || '', name: cred.user.displayName || '' }, 'LOGIN', 'User logged in successfully');
       }
       navigate('/');
     } catch (err: any) {

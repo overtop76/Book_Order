@@ -68,6 +68,13 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
       // Clean up secondary app
       await deleteApp(secondaryApp);
 
+      const { logAction } = await import('../utils/auditLogger');
+      const { auth } = await import('../firebase');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await logAction({ uid: currentUser.uid, email: currentUser.email || '', name: currentUser.displayName || '' }, 'CREATE_USER', `Created new user: ${email} with role ${role}`);
+      }
+
       setGeneratedPassword(newPassword);
       onUserCreated();
     } catch (err: any) {

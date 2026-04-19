@@ -185,9 +185,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
       };
 
+      const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
+      
       await setDoc(doc(db, 'orders', orderId), newOrder);
       setCurrentOrder(newOrder);
       setLastSavedAt(new Date());
+
+      if (isStatusChange) {
+        const { logAction } = await import('../utils/auditLogger');
+        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER_STATUS', `Changed Order ${name} status to ${orderStatus}`);
+      }
     } catch (error) {
       console.error("Error saving order:", error);
     } finally {
@@ -213,6 +220,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await deleteDoc(doc(db, 'orders', orderId));
+      
+      const { logAction } = await import('../utils/auditLogger');
+      await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'DELETE_ORDER', `Deleted order: ${orderToDelete.name}`);
+
       if (currentOrder?.id === orderId) {
         // Clear current form if we deleted what we are viewing
         setCurrentOrder(null);

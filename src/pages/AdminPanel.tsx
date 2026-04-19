@@ -3,10 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link } from 'react-router-dom';
-import { KeyRound, Shield } from 'lucide-react';
+import { KeyRound, Shield, FileText } from 'lucide-react';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import UserPermissionsModal from '../components/UserPermissionsModal';
 import CreateUserModal from '../components/CreateUserModal';
+import { logAction } from '../utils/auditLogger';
 
 interface User {
   uid: string;
@@ -21,7 +22,7 @@ interface User {
 }
 
 export default function AdminPanel() {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -46,18 +47,20 @@ export default function AdminPanel() {
     }
   };
 
-  const updateUserRole = async (uid: string, newRole: 'admin' | 'editor' | 'viewer') => {
+  const updateUserRole = async (uid: string, newRole: 'admin' | 'editor' | 'viewer', userEmail: string) => {
     try {
       await updateDoc(doc(db, 'users', uid), { role: newRole });
+      await logAction(userData, 'UPDATE_ROLE', `Changed role for ${userEmail} to ${newRole}`);
       fetchUsers();
     } catch (error) {
       console.error("Error updating role:", error);
     }
   };
 
-  const toggleUserStatus = async (uid: string, currentStatus: boolean) => {
+  const toggleUserStatus = async (uid: string, currentStatus: boolean, userEmail: string) => {
     try {
       await updateDoc(doc(db, 'users', uid), { isActive: !currentStatus });
+      await logAction(userData, 'TOGGLE_STATUS', `${!currentStatus ? 'Activated' : 'Deactivated'} user ${userEmail}`);
       fetchUsers();
     } catch (error) {
       console.error("Error toggling status:", error);
@@ -82,6 +85,8 @@ export default function AdminPanel() {
           await batch.commit();
         }
 
+        await logAction(userData, 'DELETE_USER', `Deleted user account: ${email}`);
+
         alert(`User ${email} deleted successfully.`);
         fetchUsers();
       } catch (error: any) {
@@ -97,6 +102,7 @@ export default function AdminPanel() {
         const { sendPasswordResetEmail } = await import('firebase/auth');
         const { auth } = await import('../firebase');
         await sendPasswordResetEmail(auth, email);
+        await logAction(userData, 'RESET_PASSWORD', `Sent password reset email to ${email}`);
         alert('Password reset email sent successfully!');
       } catch (error: any) {
         alert(error.message);
@@ -117,6 +123,10 @@ export default function AdminPanel() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/admin/logs" className="flex items-center gap-1.5 text-sm bg-purple-600 text-white hover:bg-purple-700 px-4 py-2 rounded-lg transition font-medium">
+              <FileText className="w-4 h-4" />
+              Audit Logs
+            </Link>
             <button onClick={() => setIsCreateUserModalOpen(true)} className="flex items-center gap-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg transition font-medium">
               Create New User
             </button>
@@ -147,7 +157,7 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <select
                       value={u.role}
-                      onChange={(e) => updateUserRole(u.uid, e.target.value as any)}
+                      onChange={(e) => updateUserRole(u.uid, e.target.value as any, u.email)}
                       disabled={u.uid === user?.uid}
                       className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
@@ -164,7 +174,7 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => toggleUserStatus(u.uid, u.isActive)}
+                        onClick={() => toggleUserStatus(u.uid, u.isActive, u.email)}
                         disabled={u.uid === user?.uid}
                         className={`text-${u.isActive ? 'red' : 'green'}-600 hover:text-${u.isActive ? 'red' : 'green'}-900 disabled:opacity-50`}
                       >

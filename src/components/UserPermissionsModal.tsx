@@ -53,6 +53,14 @@ export default function UserPermissionsModal({ isOpen, onClose, user, onUpdate }
         grades,
         subjects
       });
+
+      const { logAction } = await import('../utils/auditLogger');
+      const { auth } = await import('../firebase');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await logAction({ uid: currentUser.uid, email: currentUser.email || '', name: currentUser.displayName || '' }, 'UPDATE_PERMISSIONS', `Updated permissions for ${user.email}`);
+      }
+
       onUpdate();
       onClose();
     } catch (error) {

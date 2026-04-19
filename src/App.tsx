@@ -5,6 +5,7 @@ import { OrderProvider } from './context/OrderContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
+import AuditLogs from './pages/AuditLogs';
 
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
   const { user, userData, loading, isAdmin } = useAuth();
@@ -32,6 +33,11 @@ export default function App() {
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin={true}>
               <AdminPanel />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/logs" element={
+            <ProtectedRoute requireAdmin={true}>
+              <AuditLogs />
             </ProtectedRoute>
           } />
         </Routes>
