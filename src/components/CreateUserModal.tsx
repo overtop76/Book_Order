@@ -5,6 +5,8 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, firebaseConfig } from '../firebase';
 
+const ALL_PROGRAMS = ['American', 'British', 'IB'];
+
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,7 +17,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
-  const [programAccess, setProgramAccess] = useState<string>('ALL');
+  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [customPassword, setCustomPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,15 +54,13 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, newPassword);
       const newUser = userCredential.user;
 
-      const programs = programAccess === 'ALL' ? [] : [programAccess];
-
       // Add user to Firestore
       await setDoc(doc(db, 'users', newUser.uid), {
         uid: newUser.uid,
         name,
         email,
         role,
-        programs,
+        programs: selectedPrograms,
         isActive: true,
         createdAt: new Date().toISOString()
       });
@@ -99,7 +99,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
     setEmail('');
     setCustomPassword('');
     setRole('viewer');
-    setProgramAccess('ALL');
+    setSelectedPrograms([]);
     setGeneratedPassword('');
     setError('');
     onClose();
@@ -202,19 +202,38 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Program Access</label>
-                <select
-                  value={programAccess}
-                  onChange={(e) => setProgramAccess(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="ALL">All Programs</option>
-                  <option value="American">American</option>
-                  <option value="British">British</option>
-                  <option value="IB">IB</option>
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  You can fine-tune permissions (Grades, Subjects) after creating the user.
+                <label className="block text-sm font-medium text-gray-700 mb-2">Program Access</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPrograms([])}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                      selectedPrograms.length === 0 ? 'bg-purple-100 border-purple-300 text-purple-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    All Programs
+                  </button>
+                  {ALL_PROGRAMS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        if (selectedPrograms.includes(p)) {
+                          setSelectedPrograms(selectedPrograms.filter(i => i !== p));
+                        } else {
+                          setSelectedPrograms([...selectedPrograms, p]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                        selectedPrograms.includes(p) ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Select "All Programs" or specific ones. You can fine-tune permissions (Grades, Subjects) after creating the user.
                 </p>
               </div>
 
