@@ -19,6 +19,14 @@ export default function Dashboard() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const handleLogout = async () => {
+    const { logAction } = await import('../utils/auditLogger');
+    if (auth.currentUser) {
+      await logAction(
+        { uid: auth.currentUser.uid, email: auth.currentUser.email || '', name: auth.currentUser.displayName || '' },
+        'LOGOUT',
+        'User logged out manually'
+      );
+    }
     await signOut(auth);
   };
 
