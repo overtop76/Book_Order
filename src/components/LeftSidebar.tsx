@@ -3,6 +3,7 @@ import { useOrder } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { Book } from '../context/OrderContext';
 import { Search, Loader2 } from 'lucide-react';
+import { lookupISBN } from '../utils/isbnLookup';
 
 const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
   American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
@@ -68,63 +69,24 @@ export default function LeftSidebar() {
 
     setIsLookingUp(true);
     setIsbnStatus('idle');
-    setIsbnMessage('Looking up...');
+    setIsbnMessage('Looking up from multiple resources...');
 
     try {
-      let foundTitle = '';
-      let foundPublisher = '';
-      let foundEdition = '';
-
-      // 1. Try Google Books API
-      const res1 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
-      const data1 = await res1.json();
-
-      if (data1.items && data1.items.length > 0) {
-        const info = data1.items[0].volumeInfo;
-        foundTitle = info.title || '';
-        if (info.subtitle) foundTitle += `: ${info.subtitle}`;
-        foundPublisher = info.publisher || '';
-        // Google Books sometimes puts edition in the title or description, but no explicit field usually.
-      }
-
-      // 2. Try OpenLibrary API (details) if Google Books didn't find everything
-      if (!foundTitle || !foundPublisher) {
-        const res2 = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=details`);
-        const data2 = await res2.json();
-        const key = `ISBN:${cleanIsbn}`;
-
-        if (data2[key] && data2[key].details) {
-          const details = data2[key].details;
-          if (!foundTitle && details.title) foundTitle = details.title;
-          if (!foundPublisher && details.publishers && details.publishers.length > 0) {
-            foundPublisher = details.publishers.join(', ');
-          }
-          if (details.edition_name) {
-            foundEdition = details.edition_name;
-          } else if (details.revision) {
-            foundEdition = `Rev ${details.revision}`;
-          }
-        }
-      }
-
-      if (foundTitle) {
-        let finalTitle = foundTitle;
-        if (foundEdition && !finalTitle.toLowerCase().includes('edition')) {
-          finalTitle += ` (${foundEdition})`;
-        }
-        setTitle(finalTitle);
-        if (foundPublisher) setPublisher(foundPublisher);
-        
+      const result = await lookupISBN(cleanIsbn);
+      
+      if (result.success) {
+        setTitle(result.title);
+        if (result.publisher) setPublisher(result.publisher);
         setIsbnStatus('valid');
-        setIsbnMessage(`Found: ${finalTitle.substring(0, 25)}${finalTitle.length > 25 ? '...' : ''}`);
+        setIsbnMessage(result.message);
       } else {
         setIsbnStatus('invalid');
-        setIsbnMessage('ISBN not found in databases');
+        setIsbnMessage(result.message);
       }
     } catch (err) {
       console.error("ISBN Lookup Error:", err);
       setIsbnStatus('error');
-      setIsbnMessage('Lookup failed. Please check connection.');
+      setIsbnMessage('Lookup failed.');
     } finally {
       setIsLookingUp(false);
     }

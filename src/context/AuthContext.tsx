@@ -80,11 +80,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUserData(newUserData);
             } else {
               // User was deleted from the database
+              const newUserData: UserData = {
+                uid: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Unknown user',
+                email: firebaseUser.email || '',
+                role: 'viewer',
+                isActive: false, // Inactive by default
+                createdAt: new Date().toISOString(),
+              };
+              
+              try {
+                await setDoc(userDocRef, newUserData);
+                
+                // Add an audit log for restoration
+                const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+                await addDoc(collection(db, 'audit_logs'), {
+                  timestamp: serverTimestamp(),
+                  userId: firebaseUser.uid,
+                  userEmail: firebaseUser.email,
+                  userName: firebaseUser.displayName || 'Unknown',
+                  action: 'USER_RESTORED',
+                  details: 'User logged in after being deleted. Account restored as an inactive viewer.',
+                });
+              } catch (e) {
+                console.error("Failed to restore user", e);
+              }
+
               const { signOut } = await import('firebase/auth');
               await signOut(auth);
               setUserData(null);
               setUser(null);
-              alert("Your account has been deleted by an administrator.");
+              alert("Your account requires administrator approval. Please contact your admin to restore your access.");
             }
           }
         } catch (error) {

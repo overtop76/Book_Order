@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Book, useOrder } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
-import { X, Save } from 'lucide-react';
+import { X, Save, Search, Loader2 } from 'lucide-react';
+import { lookupISBN } from '../utils/isbnLookup';
 
 interface EditBookModalProps {
   book: Book;
@@ -15,6 +16,10 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
   const [formData, setFormData] = useState<Book>({ ...book });
   const [isCustomSubject, setIsCustomSubject] = useState(false);
   const [customSubjectValue, setCustomSubjectValue] = useState('');
+  
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [isbnStatus, setIsbnStatus] = useState<'idle' | 'valid' | 'invalid' | 'error'>('idle');
+  const [isbnMessage, setIsbnMessage] = useState('');
 
   const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
     American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
@@ -68,6 +73,11 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
       return;
     }
 
+    if (name === 'isbn') {
+      setIsbnStatus('idle');
+      setIsbnMessage('');
+    }
+
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
       
@@ -84,6 +94,38 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
       
       return updated;
     });
+  };
+
+  const handleISBNLookup = async () => {
+    const cleanIsbn = formData.isbn.replace(/[-\s]/g, '');
+    if (!cleanIsbn) return;
+
+    setIsLookingUp(true);
+    setIsbnStatus('idle');
+    setIsbnMessage('Looking up from multiple resources...');
+
+    try {
+      const result = await lookupISBN(cleanIsbn);
+      
+      if (result.success) {
+        setFormData(prev => ({ 
+          ...prev, 
+          title: result.title || prev.title,
+          publisher: result.publisher || prev.publisher
+        }));
+        setIsbnStatus('valid');
+        setIsbnMessage(result.message);
+      } else {
+        setIsbnStatus('invalid');
+        setIsbnMessage(result.message);
+      }
+    } catch (err) {
+      console.error("ISBN Lookup Error:", err);
+      setIsbnStatus('error');
+      setIsbnMessage('Lookup failed.');
+    } finally {
+      setIsLookingUp(false);
+    }
   };
 
   const handleSave = () => {
@@ -150,8 +192,39 @@ export default function EditBookModal({ book, onClose }: EditBookModalProps) {
               <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">ISBN {formData.format !== 'Booklet' && '*'}</label>
-              <input type="text" name="isbn" value={formData.isbn} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                ISBN {formData.format !== 'Booklet' && '*'}
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input 
+                    type="text" 
+                    name="isbn" 
+                    value={formData.isbn} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 font-mono ${
+                      isbnStatus === 'valid' ? 'border-green-500 ring-1 ring-green-500' : 
+                      isbnStatus === 'invalid' ? 'border-red-500 ring-1 ring-red-500' : 
+                      'border-gray-300'
+                    }`} 
+                    placeholder="978-0-13-..." 
+                  />
+                  {isbnMessage && (
+                    <div className={`text-[10px] mt-1 absolute ${isbnStatus === 'valid' ? 'text-green-600' : isbnStatus === 'invalid' ? 'text-red-600' : 'text-gray-500'}`}>
+                      {isbnMessage}
+                    </div>
+                  )}
+                </div>
+                <button 
+                  type="button" 
+                  onClick={handleISBNLookup}
+                  disabled={isLookingUp || !formData.isbn.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 whitespace-nowrap h-[38px]"
+                >
+                  {isLookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Lookup
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Publisher</label>

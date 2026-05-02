@@ -169,6 +169,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsAutoSaving(true);
     try {
       const orderId = currentOrder?.id || `order_${Date.now()}`;
+      
+      const isNewOrder = !currentOrder;
+      const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
+      
+      // Check if there are meaningful changes (ignoring timestamps)
+      const hasMeaningfulChanges = isNewOrder || isStatusChange || !currentOrder || 
+        currentOrder.name !== name || 
+        currentOrder.academicYear !== academicYear ||
+        currentOrder.schoolName !== schoolName ||
+        JSON.stringify(currentOrder.books) !== JSON.stringify(books) ||
+        JSON.stringify(currentOrder.customSubjects) !== JSON.stringify(customSubjects);
+
       const newOrder: Order = {
         id: orderId,
         name,
@@ -179,27 +191,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         customSubjects: customSubjects,
         createdBy: currentOrder?.createdBy || user.uid,
         createdAt: currentOrder?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: hasMeaningfulChanges ? new Date().toISOString() : currentOrder?.updatedAt || new Date().toISOString(),
         creatorPrograms: currentOrder?.creatorPrograms || userData?.programs || [],
         creatorGrades: currentOrder?.creatorGrades || userData?.grades || [],
         creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
       };
 
-      const isNewOrder = !currentOrder;
-      const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
+      // Only perform Firestore write if there are actual changes
+      if (hasMeaningfulChanges) {
+        await setDoc(doc(db, 'orders', orderId), newOrder);
+        const { logAction } = await import('../utils/auditLogger');
+        if (isNewOrder) {
+          await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'CREATE_ORDER', `Created new order: ${name}`);
+        } else if (isStatusChange) {
+          await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER_STATUS', `Changed Order ${name} status to ${orderStatus}`);
+        } else {
+          await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER', `Updated order details for: ${name}`);
+        }
+      }
       
-      await setDoc(doc(db, 'orders', orderId), newOrder);
       setCurrentOrder(newOrder);
       setLastSavedAt(new Date());
-
-      const { logAction } = await import('../utils/auditLogger');
-      if (isNewOrder) {
-        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'CREATE_ORDER', `Created new order: ${name}`);
-      } else if (isStatusChange) {
-        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER_STATUS', `Changed Order ${name} status to ${orderStatus}`);
-      } else {
-        await logAction({ uid: user.uid, email: user.email || '', name: user.displayName || '' }, 'UPDATE_ORDER', `Updated order: ${name}`);
-      }
     } catch (error) {
       console.error("Error saving order:", error);
     } finally {
