@@ -19,7 +19,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
-    if (!orderName) return alert('Please enter an order name');
+    const finalName = orderName || 'Draft Order';
 
     if (orderStatus === 'Approved' || orderStatus === 'Submitted to Vendor') {
       if (!window.confirm(`Are you sure you want to save this order as ${orderStatus}?\n\nThis is a final approved version that cannot be deleted or changed by you afterwards.`)) {
@@ -27,7 +27,8 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       }
     }
     
-    await saveOrder(orderName, academicYear, schoolName);
+    await saveOrder(finalName, academicYear, schoolName);
+    if (!orderName) setOrderName('Draft Order');
     alert('Order saved successfully!');
   };
 
@@ -60,7 +61,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     ];
 
     const colHeaders = viewMode === 'stock' 
-      ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Current Stock']
+      ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Current Stock']
       : ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
     const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
@@ -69,7 +70,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     const dataRows = filteredBooks.map((b, idx) => {
       if (viewMode === 'stock') {
         return [
-          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.projectedRequired || 0,
           b.currentStock || 0
         ];
       }
@@ -82,7 +83,8 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
 
     const totalRow = viewMode === 'stock'
       ? [
-          '', '', '', '', 'TOTAL', '', '',
+          '', '', '', '', 'TOTAL', '',
+          filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
           filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
         ]
       : [
@@ -136,7 +138,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     doc.text(`School: ${schoolName || 'N/A'}    |    Academic Year: ${academicYear}    |    Prepared by: ${userData?.name || 'Unknown'}    |    Date: ${new Date().toLocaleDateString()}`, margin, margin + 12);
 
     const headers = viewMode === 'stock'
-      ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Stock']]
+      ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Stock']]
       : [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
     
     const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
@@ -145,7 +147,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     const rows = filteredBooks.map((b, idx) => {
       if (viewMode === 'stock') {
         return [
-          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.publisher || '',
+          idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.projectedRequired || 0,
           b.currentStock || 0
         ];
       }
@@ -158,7 +160,8 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
 
     if (viewMode === 'stock') {
       rows.push([
-        '', '', '', '', 'TOTAL', '', '',
+        '', '', '', '', 'TOTAL', '',
+        filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
         filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
       ]);
     } else {

@@ -117,13 +117,13 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
       <td className="px-3 py-3 text-xs font-medium text-gray-800 max-w-[200px] truncate" title={b.title}>{b.title}</td>
       {viewMode === 'stock' ? (
         <>
-          <td className="px-3 py-3 text-xs text-gray-600">{b.isbn}</td>
-          <td className="px-3 py-3 text-xs text-gray-600">{b.publisher}</td>
+          <td className="px-3 py-3 text-xs text-gray-600 truncate max-w-[120px]" title={b.isbn}>{b.isbn}</td>
+          <td className="px-3 py-3 text-center text-xs font-medium text-blue-700">{b.projectedRequired}</td>
           <td className="px-3 py-3 text-right text-xs font-bold text-gray-900">
             {isViewer || isLocked ? b.currentStock : (
               <input 
                 type="number" 
-                value={b.currentStock} 
+                value={b.currentStock.toString()} 
                 onChange={(e) => handleUpdateBook(b.id, 'currentStock', parseInt(e.target.value) || 0)}
                 className="w-16 px-1 py-0.5 text-right border border-transparent hover:border-gray-300 focus:border-blue-500 rounded bg-transparent focus:bg-white transition-all"
               />
@@ -136,7 +136,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
             {isViewer || isLocked ? b.nextYearStudents : (
               <input 
                 type="number" 
-                value={b.nextYearStudents} 
+                value={b.nextYearStudents.toString()} 
                 onChange={(e) => handleUpdateBook(b.id, 'nextYearStudents', parseInt(e.target.value) || 0)}
                 className="w-16 px-1 py-0.5 text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded bg-transparent focus:bg-white transition-all"
               />
@@ -147,7 +147,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
             {isViewer || isLocked ? b.currentStock : (
               <input 
                 type="number" 
-                value={b.currentStock} 
+                value={b.currentStock.toString()} 
                 onChange={(e) => handleUpdateBook(b.id, 'currentStock', parseInt(e.target.value) || 0)}
                 className="w-16 px-1 py-0.5 text-right border border-transparent hover:border-gray-300 focus:border-blue-500 rounded bg-transparent focus:bg-white transition-all"
               />
@@ -271,7 +271,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                 {viewMode === 'stock' ? (
                   <>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">ISBN</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Publisher</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Required</th>
                     <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Current Stock</th>
                   </>
                 ) : (
@@ -303,7 +303,8 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                   <td colSpan={4} className="px-3 py-3 text-right text-sm text-gray-800">TOTAL</td>
                   {viewMode === 'stock' ? (
                     <>
-                      <td colSpan={2}></td>
+                      <td></td>
+                      <td className="px-3 py-3 text-center text-sm text-green-700">{totalProjected}</td>
                       <td className="px-3 py-3 text-right text-sm text-green-700">{totalStock}</td>
                     </>
                   ) : (

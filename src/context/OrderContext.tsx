@@ -276,7 +276,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       clearTimeout(timer);
       clearInterval(intervalTimer);
     };
-  }, [books, customSubjects, orderName, academicYear, schoolName]);
+  }, [books, customSubjects, orderName, academicYear, schoolName, orderStatus]);
 
   const loadOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
