@@ -93,7 +93,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
 
   const renderBookRow = (b: Book) => (
     <tr key={b.id} className={`hover:bg-blue-50/50 ${selectedBooks.includes(b.id) ? 'bg-blue-50/30' : ''}`}>
-      {!isViewer && activeTab === 'entry' && (
+      {!isViewer && !isLocked && activeTab === 'entry' && (
         <td className="px-3 py-3">
           <input 
             type="checkbox" 
@@ -187,7 +187,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
     return Object.keys(groups).sort().map(key => (
       <React.Fragment key={key}>
         <tr className="bg-gray-100 border-y border-gray-200">
-          <td colSpan={(!isViewer && activeTab === 'entry') ? (viewMode === 'stock' ? 8 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-2 text-xs font-bold text-gray-700 uppercase">
+          <td colSpan={(!isViewer && !isLocked && activeTab === 'entry') ? (viewMode === 'stock' ? 9 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-2 text-xs font-bold text-gray-700 uppercase">
             {groupBy === 'grade' ? 'Grade: ' : 'Subject: '} {key} ({groups[key].length} books)
           </td>
         </tr>
@@ -282,13 +282,13 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                     <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Order</th>
                   </>
                 )}
-                {!isViewer && activeTab === 'entry' && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>}
+                {!isViewer && !isLocked && activeTab === 'entry' && <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredBooks.length === 0 ? (
                 <tr>
-                  <td colSpan={(!isViewer && activeTab === 'entry') ? (viewMode === 'stock' ? 8 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={(!isViewer && !isLocked && activeTab === 'entry') ? (viewMode === 'stock' ? 9 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-12 text-center text-gray-400 text-sm">
                     No books found.
                   </td>
                 </tr>
@@ -299,7 +299,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
             {filteredBooks.length > 0 && (
               <tfoot className="bg-green-50 border-t-2 border-green-500 font-bold">
                 <tr>
-                  {!isViewer && activeTab === 'entry' && <td></td>}
+                  {!isViewer && !isLocked && activeTab === 'entry' && <td></td>}
                   <td colSpan={4} className="px-3 py-3 text-right text-sm text-gray-800">TOTAL</td>
                   {viewMode === 'stock' ? (
                     <>
@@ -314,7 +314,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                       <td className="px-3 py-3 text-right text-sm text-green-700">{totalOrder}</td>
                     </>
                   )}
-                  {!isViewer && activeTab === 'entry' && <td></td>}
+                  {!isViewer && !isLocked && activeTab === 'entry' && <td></td>}
                 </tr>
               </tfoot>
             )}

@@ -194,13 +194,16 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
 
   const handleExportJSON = () => {
     if (visibleBooks.length === 0) return alert('No data to export');
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(visibleBooks, null, 2));
+    const dataStr = JSON.stringify(visibleBooks, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const objectUrl = URL.createObjectURL(blob);
     const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("href", objectUrl);
     downloadAnchorNode.setAttribute("download", getExportFileName('json'));
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
