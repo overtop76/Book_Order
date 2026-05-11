@@ -5,10 +5,9 @@ import { Trash2, Copy, Edit2 } from 'lucide-react';
 import EditBookModal from './EditBookModal';
 
 export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
-  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
+  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
-  const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
   const [editingBook, setEditingBook] = useState<Book | null>(null);
 
   const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
@@ -59,7 +58,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
       const updated = { ...b, [field]: value };
       // Recalculate projected and orderQty
       updated.projectedRequired = Math.ceil(updated.nextYearStudents + (updated.nextYearStudents * updated.projectionPct / 100));
-      updated.orderQty = Math.max(0, updated.projectedRequired - updated.currentStock);
+      updated.orderQty = Math.max(0, updated.projectedRequired - (updated.format === 'Digital' ? 0 : updated.currentStock));
       return updated;
     }));
   };
@@ -129,6 +128,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
               />
             )}
           </td>
+          <td className="px-3 py-3 text-center text-xs font-bold text-gray-900 bg-gray-50">{b.orderQty}</td>
         </>
       ) : (
         <>
@@ -273,6 +273,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">ISBN</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Required</th>
                     <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Current Stock</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">To Order</th>
                   </>
                 ) : (
                   <>
@@ -306,6 +307,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
                       <td></td>
                       <td className="px-3 py-3 text-center text-sm text-green-700">{totalProjected}</td>
                       <td className="px-3 py-3 text-right text-sm text-green-700">{totalStock}</td>
+                      <td className="px-3 py-3 text-center text-sm text-green-700">{totalOrder}</td>
                     </>
                   ) : (
                     <>

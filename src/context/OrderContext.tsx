@@ -58,6 +58,8 @@ interface OrderContextType {
   setFilterGrade: React.Dispatch<React.SetStateAction<string>>;
   filterSubject: string;
   setFilterSubject: React.Dispatch<React.SetStateAction<string>>;
+  filterStock: string;
+  setFilterStock: React.Dispatch<React.SetStateAction<string>>;
   groupBy: 'none' | 'grade' | 'subject';
   setGroupBy: React.Dispatch<React.SetStateAction<'none' | 'grade' | 'subject'>>;
   viewMode: 'order' | 'stock';
@@ -87,6 +89,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [filterProgram, setFilterProgram] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
+  const [filterStock, setFilterStock] = useState('all');
   const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject'>('none');
   const [viewMode, setViewMode] = useState<'order' | 'stock'>('order');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -258,23 +261,45 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveOrderRef.current = saveOrder;
   });
 
-  // Auto-save effect
+  const saveArgsRef = useRef({ orderName, academicYear, schoolName });
+  useEffect(() => {
+    saveArgsRef.current = { orderName, academicYear, schoolName };
+  }, [orderName, academicYear, schoolName]);
+
+  // Setup interval save that DOES NOT reset when dependencies change
+  useEffect(() => {
+    const intervalTimer = setInterval(() => {
+      if (saveOrderRef.current) {
+        const { orderName, academicYear, schoolName } = saveArgsRef.current;
+        saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
+      }
+    }, 30000); // Save every 30 seconds as a fallback
+
+    const handleBeforeUnload = () => {
+      if (saveOrderRef.current) {
+        const { orderName, academicYear, schoolName } = saveArgsRef.current;
+        saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(intervalTimer);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []); // Uses saveArgsRef to always get the latest state
+
+  // Auto-save effect (debounce)
   useEffect(() => {
     if (books.length === 0 && !orderName) return;
     
     const timer = setTimeout(() => {
-      // Auto-save as 'Draft Order' if no name provided yet
       if (saveOrderRef.current) saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
     }, 2000); // Debounce for 2 seconds
 
-    // Also set up a 2-minute regular interval save
-    const intervalTimer = setInterval(() => {
-      if (saveOrderRef.current) saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
-    }, 120000);
-
     return () => {
       clearTimeout(timer);
-      clearInterval(intervalTimer);
     };
   }, [books, customSubjects, orderName, academicYear, schoolName, orderStatus]);
 
@@ -309,7 +334,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <OrderContext.Provider value={{ 
       currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, deleteOrder, loadOrder, orders,
-      filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
+      filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, setFilterStock,
       groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
       orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
       orderStatus, setOrderStatus, isLocked

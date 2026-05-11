@@ -9,13 +9,12 @@ import autoTable from 'jspdf-autotable';
 export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' | 'orders' }) {
   const { 
     books, visibleBooks, setBooks, saveOrder, isLocked,
-    filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject,
+    filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, setFilterStock,
     viewMode, orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,
     orderStatus, setOrderStatus
   } = useOrder();
   const { userData, isViewer } = useAuth();
   
-  const [filterStock, setFilterStock] = useState('all'); // all, in-stock, out-of-stock
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
@@ -61,7 +60,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     ];
 
     const colHeaders = viewMode === 'stock' 
-      ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Current Stock']
+      ? ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Current Stock', 'To Order']
       : ['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Projection %', 'Projected', 'Stock', 'Final Order', 'Format', 'Type'];
     
     const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
@@ -71,7 +70,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       if (viewMode === 'stock') {
         return [
           idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.projectedRequired || 0,
-          b.currentStock || 0
+          b.currentStock || 0, b.orderQty || 0
         ];
       }
       return [
@@ -85,7 +84,8 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       ? [
           '', '', '', '', 'TOTAL', '',
           filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
-          filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
+          filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+          filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0)
         ]
       : [
           '', '', '', '', 'TOTAL', '', '',
@@ -138,7 +138,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     doc.text(`School: ${schoolName || 'N/A'}    |    Academic Year: ${academicYear}    |    Prepared by: ${userData?.name || 'Unknown'}    |    Date: ${new Date().toLocaleDateString()}`, margin, margin + 12);
 
     const headers = viewMode === 'stock'
-      ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Stock']]
+      ? [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Required', 'Stock', 'To Order']]
       : [['#', 'Program', 'Grade', 'Subject', 'Book Title', 'ISBN', 'Publisher', 'Students', 'Proj%', 'Projected', 'Stock', 'Final Order', 'Format', 'Type']];
     
     const formatAbbr = (f: string) => f === 'Hard Copy' ? 'HC' : f === 'Digital' ? 'D' : f === 'Both' ? 'B' : f === 'Booklet' ? 'Bkl' : f;
@@ -148,7 +148,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       if (viewMode === 'stock') {
         return [
           idx + 1, b.program, b.grade, b.subject, b.title, b.isbn || '', b.projectedRequired || 0,
-          b.currentStock || 0
+          b.currentStock || 0, b.orderQty || 0
         ];
       }
       return [
@@ -162,7 +162,8 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       rows.push([
         '', '', '', '', 'TOTAL', '',
         filteredBooks.reduce((s, b) => s + (Number(b.projectedRequired) || 0), 0),
-        filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0)
+        filteredBooks.reduce((s, b) => s + (Number(b.currentStock) || 0), 0),
+        filteredBooks.reduce((s, b) => s + (Number(b.orderQty) || 0), 0)
       ]);
     } else {
       rows.push([
