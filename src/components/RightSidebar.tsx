@@ -222,21 +222,38 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     
     // Validate and format
     const formattedBooks = importedBooks.map(b => {
+      const getFormat = (f: any) => {
+        const val = String(f || '').trim();
+        if (val === 'HC') return 'Hard Copy';
+        if (val === 'D') return 'Digital';
+        if (val === 'B') return 'Both';
+        if (val === 'Bkl') return 'Booklet';
+        return val || 'Hard Copy';
+      };
+      
+      const getType = (t: any) => {
+        const val = String(t || '').trim();
+        if (val === 'SC') return 'Student Copy';
+        if (val === 'TE') return 'Teacher Edition';
+        if (val === 'RM') return 'Resource Material';
+        return val || 'Student Copy';
+      };
+
       return {
         id: b.id || `bk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        program: b.program || 'Unknown',
-        grade: b.grade || 'Unknown',
-        subject: b.subject || 'Unknown',
-        title: b.title || b['Book Title'] || 'Unknown Title',
+        program: b.program || b['Program'] || 'Unknown',
+        grade: String(b.grade || b['Grade'] || 'Unknown'),
+        subject: b.subject || b['Subject'] || 'Unknown',
+        title: b.title || b['Book Title'] || b['Title'] || 'Unknown Title',
         isbn: b.isbn !== undefined ? b.isbn : (b['ISBN'] || ''),
         publisher: b.publisher || b['Publisher'] || '',
-        nextYearStudents: Number(b.nextYearStudents || b['Students']) || 0,
-        projectionPct: Number(b.projectionPct !== undefined ? b.projectionPct : (String(b['Proj%'] || b['Projection %']).replace('%', ''))) || 0,
-        projectedRequired: Number(b.projectedRequired || b['Projected']) || 0,
-        currentStock: Number(b.currentStock || b['Stock'] || b['Current Stock']) || 0,
-        orderQty: Number(b.orderQty || b['Final Order'] || b['To Order']) || 0,
-        format: b.format || b['Format'] || 'Hard Copy',
-        type: b.type || b['Type'] || 'Student Copy',
+        nextYearStudents: Number(b.nextYearStudents !== undefined ? b.nextYearStudents : b['Students']) || 0,
+        projectionPct: Number(b.projectionPct !== undefined ? b.projectionPct : String(b['Proj%'] || b['Projection %'] || '0').replace('%', '')) || 0,
+        projectedRequired: Number(b.projectedRequired !== undefined ? b.projectedRequired : b['Projected']) || 0,
+        currentStock: Number(b.currentStock !== undefined ? b.currentStock : (b['Stock'] || b['Current Stock'])) || 0,
+        orderQty: Number(b.orderQty !== undefined ? b.orderQty : (b['Final Order'] || b['To Order'])) || 0,
+        format: getFormat(b.format || b['Format']),
+        type: getType(b.type || b['Type']),
         addedAt: b.addedAt || new Date().toISOString()
       };
     }).filter(b => b.title !== 'Unknown Title');
