@@ -6,6 +6,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import ImportDuplicateModal from './ImportDuplicateModal';
+
 export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' | 'orders' }) {
   const { 
     books, visibleBooks, setBooks, saveOrder, isLocked,
@@ -16,6 +18,10 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
   const { userData, isViewer } = useAuth();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importMatches, setImportMatches] = useState<any[]>([]);
+  const [importNonDuplicates, setImportNonDuplicates] = useState<any[]>([]);
 
   const handleSave = async () => {
     const finalName = orderName || 'Draft Order';
@@ -210,30 +216,151 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
   };
 
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImportedBooks = (importedBooks: any[]) => {
+    const matches: any[] = [];
+    const nonDuplicates: any[] = [];
+    
+    // Validate and format
+    const formattedBooks = importedBooks.map(b => {
+      return {
+        id: b.id || `bk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        program: b.program || 'Unknown',
+        grade: b.grade || 'Unknown',
+        subject: b.subject || 'Unknown',
+        title: b.title || b['Book Title'] || 'Unknown Title',
+        isbn: b.isbn !== undefined ? b.isbn : (b['ISBN'] || ''),
+        publisher: b.publisher || b['Publisher'] || '',
+        nextYearStudents: Number(b.nextYearStudents || b['Students']) || 0,
+        projectionPct: Number(b.projectionPct !== undefined ? b.projectionPct : (String(b['Proj%'] || b['Projection %']).replace('%', ''))) || 0,
+        projectedRequired: Number(b.projectedRequired || b['Projected']) || 0,
+        currentStock: Number(b.currentStock || b['Stock'] || b['Current Stock']) || 0,
+        orderQty: Number(b.orderQty || b['Final Order'] || b['To Order']) || 0,
+        format: b.format || b['Format'] || 'Hard Copy',
+        type: b.type || b['Type'] || 'Student Copy',
+        addedAt: b.addedAt || new Date().toISOString()
+      };
+    }).filter(b => b.title !== 'Unknown Title');
+
+    formattedBooks.forEach(importedBook => {
+      // Find duplicate logic
+      const cleanIsbnImported = String(importedBook.isbn || '').replace(/[-\s]/g, '').toLowerCase();
+      const duplicateByIsbn = cleanIsbnImported ? visibleBooks.find(b => String(b.isbn || '').replace(/[-\s]/g, '').toLowerCase() === cleanIsbnImported) : null;
+      
+      const duplicateByNameSubject = visibleBooks.find(b => 
+        String(b.title).toLowerCase().trim() === String(importedBook.title).toLowerCase().trim() && 
+        String(b.subject).toLowerCase().trim() === String(importedBook.subject).toLowerCase().trim() &&
+        String(b.program).toLowerCase().trim() === String(importedBook.program).toLowerCase().trim() &&
+        String(b.grade).toLowerCase().trim() === String(importedBook.grade).toLowerCase().trim()
+      );
+
+      const duplicate = duplicateByIsbn || duplicateByNameSubject;
+      
+      if (duplicate) {
+        matches.push({
+          importedBook,
+          existingBook: duplicate,
+          matchReason: duplicateByIsbn ? 'ISBN' : 'Title & Subject'
+        });
+      } else {
+        nonDuplicates.push(importedBook);
+      }
+    });
+
+    if (matches.length > 0) {
+      setImportMatches(matches);
+      setImportNonDuplicates(nonDuplicates);
+      setIsImportModalOpen(true);
+    } else {
+      if (nonDuplicates.length > 0) {
+        const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
+        setBooks([...hiddenBooks, ...nonDuplicates]);
+        alert(`Successfully imported ${nonDuplicates.length} new books!`);
+      } else {
+        alert('No valid books found to import.');
+      }
+    }
+  };
+
+  const handleImportModalConfirm = (booksToAdd: any[], existingBooksToReplaceIds: string[]) => {
+    const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
+    // visible books without the ones we are replacing
+    const remainingVisibleBooks = visibleBooks.filter(b => !existingBooksToReplaceIds.includes(b.id));
+    
+    setBooks([...hiddenBooks, ...remainingVisibleBooks, ...booksToAdd]);
+    setIsImportModalOpen(false);
+    alert(`Import complete. Added ${booksToAdd.length} books.`);
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const importedBooks = JSON.parse(event.target?.result as string);
-        if (Array.isArray(importedBooks)) {
-          const valid = importedBooks.every(b => b.id && b.title && b.program);
-          if (valid) {
-            // Keep books that the user doesn't have permission to see
-            const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
-            setBooks([...hiddenBooks, ...importedBooks]);
-            alert('Data imported successfully!');
+    if (file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedBooks = JSON.parse(event.target?.result as string);
+          if (Array.isArray(importedBooks)) {
+            processImportedBooks(importedBooks);
           } else {
-            alert('Invalid JSON format. Missing required fields.');
+            alert('Invalid JSON format. Expected an array of books.');
           }
+        } catch (err) {
+          alert('Error parsing JSON file.');
         }
-      } catch (err) {
-        alert('Error parsing JSON file.');
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    } else if (file.name.match(/\.(xlsx|xls|csv)$/)) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          let headerRowIndex = -1;
+          for (let i = 0; i < rawData.length; i++) {
+            const row = rawData[i] as string[];
+            if (row && (row.includes('Book Title') || row.includes('Title') || row.includes('Program'))) {
+              headerRowIndex = i;
+              break;
+            }
+          }
+
+          if (headerRowIndex === -1 && rawData.length > 0) {
+            headerRowIndex = 0;
+          }
+
+          if (headerRowIndex !== -1) {
+            const headers = rawData[headerRowIndex] as string[];
+            const rows = rawData.slice(headerRowIndex + 1);
+            
+            const importedFromExcel = rows.map((row: any) => {
+              const bookData: any = {};
+              headers.forEach((header, index) => {
+                if (header) {
+                  bookData[header.trim()] = row[index];
+                }
+              });
+              return bookData;
+            }).filter((b: any) => Object.keys(b).length > 0 && b['Book Title'] !== 'TOTAL');
+
+            processImportedBooks(importedFromExcel);
+          } else {
+            alert('Could not find recognizable headers in the file.');
+          }
+        } catch (err) {
+          alert('Error parsing Excel/CSV file.');
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      alert('Unsupported file format.');
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -389,9 +516,9 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
             <div className={`grid grid-cols-2 gap-2 ${isLocked || isViewer ? '' : 'pt-2'}`}>
               <button onClick={() => fileInputRef.current?.click()} disabled={isLocked} className={`col-span-2 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition ${isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
                 <Upload className="w-3.5 h-3.5" />
-                Import JSON
+                Import File
               </button>
-              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" disabled={isLocked} />
+              <input type="file" accept=".json,.xlsx,.xls,.csv" ref={fileInputRef} onChange={handleImportData} className="hidden" disabled={isLocked} />
             </div>
 
             {!isViewer && !isLocked && (
@@ -432,6 +559,14 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
           </div>
         </div>
       )}
+
+      <ImportDuplicateModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        matches={importMatches}
+        nonDuplicates={importNonDuplicates}
+        onConfirm={handleImportModalConfirm}
+      />
     </aside>
   );
 }
