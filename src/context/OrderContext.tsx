@@ -213,7 +213,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
       
-      setCurrentOrder(newOrder);
+      // Update currentOrder ONLY if we haven't loaded a different order in the meantime
+      setCurrentOrder(prev => {
+        if (!prev || prev.id === orderId) {
+          return newOrder;
+        }
+        return prev;
+      });
       setLastSavedAt(new Date());
     } catch (error) {
       console.error("Error saving order:", error);
@@ -304,6 +310,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [books, customSubjects, orderName, academicYear, schoolName, orderStatus]);
 
   const loadOrder = (orderId: string) => {
+    if (saveOrderRef.current && (books.length > 0 || orderName)) {
+      // Force a save of the current order before loading the new one
+      const { orderName: currentOrderName, academicYear: currentYear, schoolName: currentSchool } = saveArgsRef.current;
+      saveOrderRef.current(currentOrderName || 'Draft Order', currentYear, currentSchool); 
+    }
+
     const order = orders.find(o => o.id === orderId);
     if (order) {
       setCurrentOrder(order);
