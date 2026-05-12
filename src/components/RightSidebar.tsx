@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import ImportDuplicateModal from './ImportDuplicateModal';
+import ImportPreviewModal from './ImportPreviewModal';
 
 export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' | 'orders' }) {
   const { 
@@ -283,18 +283,12 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       }
     });
 
-    if (matches.length > 0) {
+    if (matches.length > 0 || nonDuplicates.length > 0) {
       setImportMatches(matches);
       setImportNonDuplicates(nonDuplicates);
       setIsImportModalOpen(true);
     } else {
-      if (nonDuplicates.length > 0) {
-        const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
-        setBooks([...hiddenBooks, ...nonDuplicates]);
-        alert(`Successfully imported ${nonDuplicates.length} new books!`);
-      } else {
-        alert('No valid books found to import.');
-      }
+      alert('No valid books found to import.');
     }
   };
 
@@ -305,7 +299,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     
     setBooks([...hiddenBooks, ...remainingVisibleBooks, ...booksToAdd]);
     setIsImportModalOpen(false);
-    alert(`Import complete. Added ${booksToAdd.length} books.`);
+    alert(`Import complete. Added/Updated ${booksToAdd.length} entries.`);
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -577,7 +571,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
         </div>
       )}
 
-      <ImportDuplicateModal
+      <ImportPreviewModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         matches={importMatches}
