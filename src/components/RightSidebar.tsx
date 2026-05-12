@@ -261,9 +261,9 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     formattedBooks.forEach(importedBook => {
       // Find duplicate logic
       const cleanIsbnImported = String(importedBook.isbn || '').replace(/[-\s]/g, '').toLowerCase();
-      const duplicateByIsbn = cleanIsbnImported ? visibleBooks.find(b => String(b.isbn || '').replace(/[-\s]/g, '').toLowerCase() === cleanIsbnImported) : null;
+      const duplicateByIsbn = cleanIsbnImported ? books.find(b => String(b.isbn || '').replace(/[-\s]/g, '').toLowerCase() === cleanIsbnImported) : null;
       
-      const duplicateByNameSubject = visibleBooks.find(b => 
+      const duplicateByNameSubject = books.find(b => 
         String(b.title).toLowerCase().trim() === String(importedBook.title).toLowerCase().trim() && 
         String(b.subject).toLowerCase().trim() === String(importedBook.subject).toLowerCase().trim() &&
         String(b.program).toLowerCase().trim() === String(importedBook.program).toLowerCase().trim() &&
@@ -293,13 +293,12 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
   };
 
   const handleImportModalConfirm = (booksToAdd: any[], existingBooksToReplaceIds: string[]) => {
-    const hiddenBooks = books.filter(b => !visibleBooks.some(vb => vb.id === b.id));
-    // visible books without the ones we are replacing
-    const remainingVisibleBooks = visibleBooks.filter(b => !existingBooksToReplaceIds.includes(b.id));
+    // Keep all books except the ones we are replacing
+    const remainingBooks = books.filter(b => !existingBooksToReplaceIds.includes(b.id));
     
-    setBooks([...hiddenBooks, ...remainingVisibleBooks, ...booksToAdd]);
+    setBooks([...remainingBooks, ...booksToAdd]);
     setIsImportModalOpen(false);
-    alert(`Import complete. Added/Updated ${booksToAdd.length} entries.`);
+    alert(`Successfully imported ${booksToAdd.length} new books!`);
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
