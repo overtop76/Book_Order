@@ -217,7 +217,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         customSubjects: customSubjects || [],
         createdBy: activeOrderCreatedByRef.current,
         createdAt: activeOrderCreatedAtRef.current,
-        updatedAt: hasMeaningfulChanges && !isNewOrder ? new Date().toISOString() : activeOrderCreatedAtRef.current,
+        updatedAt: hasMeaningfulChanges && !isNewOrder ? new Date().toISOString() : (currentOrder?.updatedAt || activeOrderCreatedAtRef.current),
         creatorPrograms: currentOrder?.creatorPrograms || userData?.programs || [],
         creatorGrades: currentOrder?.creatorGrades || userData?.grades || [],
         creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
