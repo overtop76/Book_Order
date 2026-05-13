@@ -32,9 +32,13 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
       }
     }
     
-    await saveOrder(finalName, academicYear, schoolName);
-    if (!orderName) setOrderName('Draft Order');
-    alert('Order saved successfully!');
+    try {
+      await saveOrder(finalName, academicYear, schoolName);
+      if (!orderName) setOrderName('Draft Order');
+      alert('Order saved successfully!');
+    } catch (error: any) {
+      alert(`Failed to save order: ${error.message}`);
+    }
   };
 
   const getExportFileName = (ext: string) => {

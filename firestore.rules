@@ -127,6 +127,7 @@ service cloud.firestore {
              data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() < 128 &&
              isValidDateString(data.createdAt) &&
              isValidDateString(data.updatedAt) &&
+             (!('status' in data) || (data.status is string && data.status in ['Draft', 'Under Review', 'Approved', 'Submitted to Vendor'])) &&
              (!('program' in data) || (data.program is string && data.program.size() <= 50)) &&
              (!('grade' in data) || (data.grade is string && data.grade.size() <= 50)) &&
              (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 50)) &&

@@ -158,9 +158,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isLocked = Boolean(currentOrder?.status && ['Approved', 'Submitted to Vendor'].includes(currentOrder.status) && !isAdmin);
 
   const activeOrderIdRef = useRef<string | null>(null);
+  const activeOrderCreatedAtRef = useRef<string | null>(null);
+  const activeOrderCreatedByRef = useRef<string | null>(null);
 
   useEffect(() => {
     activeOrderIdRef.current = currentOrder?.id || null;
+    activeOrderCreatedAtRef.current = currentOrder?.createdAt || null;
+    activeOrderCreatedByRef.current = currentOrder?.createdBy || null;
   }, [currentOrder?.id]);
 
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
@@ -181,9 +185,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const orderId = currentOrder?.id || activeOrderIdRef.current || `order_${Date.now()}`;
       activeOrderIdRef.current = orderId; 
       
-      const isNewOrder = !currentOrder;
+      const isNewOrder = !currentOrder && !activeOrderCreatedAtRef.current;
       const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
       
+      // Store creation data on first save to ensure immutability
+      if (!activeOrderCreatedAtRef.current) activeOrderCreatedAtRef.current = new Date().toISOString();
+      if (!activeOrderCreatedByRef.current) activeOrderCreatedByRef.current = user.uid;
+
       // Check if there are meaningful changes (ignoring timestamps)
       const hasMeaningfulChanges = isNewOrder || isStatusChange || !currentOrder || 
         currentOrder.name !== name || 
@@ -192,21 +200,41 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         JSON.stringify(currentOrder.books) !== JSON.stringify(books) ||
         JSON.stringify(currentOrder.customSubjects) !== JSON.stringify(customSubjects);
 
-      const newOrder: Order = {
+      const newOrder: any = {
         id: orderId,
-        name,
-        academicYear,
-        schoolName,
-        status: orderStatus,
-        books: books,
-        customSubjects: customSubjects,
-        createdBy: currentOrder?.createdBy || user.uid,
-        createdAt: currentOrder?.createdAt || new Date().toISOString(),
-        updatedAt: hasMeaningfulChanges ? new Date().toISOString() : currentOrder?.updatedAt || new Date().toISOString(),
+        name: name || 'Draft Order',
+        academicYear: academicYear || '',
+        schoolName: schoolName || '',
+        status: orderStatus || 'Draft',
+        books: books || [],
+        customSubjects: customSubjects || [],
+        createdBy: activeOrderCreatedByRef.current,
+        createdAt: activeOrderCreatedAtRef.current,
+        updatedAt: hasMeaningfulChanges && !isNewOrder ? new Date().toISOString() : activeOrderCreatedAtRef.current,
         creatorPrograms: currentOrder?.creatorPrograms || userData?.programs || [],
         creatorGrades: currentOrder?.creatorGrades || userData?.grades || [],
         creatorSubjects: currentOrder?.creatorSubjects || userData?.subjects || [],
       };
+
+      // Strip any undefined values to avoid Firestore errors
+      Object.keys(newOrder).forEach(key => {
+        if (newOrder[key] === undefined) {
+          delete newOrder[key];
+        }
+      });
+      
+      // Clean books array to remove any undefined properties
+      if (newOrder.books && Array.isArray(newOrder.books)) {
+        newOrder.books = newOrder.books.map((b: any) => {
+          const cleanedBook = { ...b };
+          Object.keys(cleanedBook).forEach(k => {
+            if (cleanedBook[k] === undefined) {
+              delete cleanedBook[k];
+            }
+          });
+          return cleanedBook;
+        });
+      }
 
       // Only perform Firestore write if there are actual changes
       if (hasMeaningfulChanges) {
@@ -231,6 +259,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLastSavedAt(new Date());
     } catch (error) {
       console.error("Error saving order:", error);
+      throw error;
     } finally {
       setIsAutoSaving(false);
     }
@@ -343,6 +372,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearOrder = () => {
     setCurrentOrder(null);
     activeOrderIdRef.current = null;
+    activeOrderCreatedAtRef.current = null;
+    activeOrderCreatedByRef.current = null;
     setBooks([]);
     setCustomSubjects([]);
     setOrderName('');
