@@ -51,6 +51,7 @@ interface OrderContextType {
   saveOrder: (name: string, academicYear: string, schoolName: string) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   loadOrder: (orderId: string) => void;
+  clearOrder: () => void;
   orders: Order[];
   filterProgram: string;
   setFilterProgram: React.Dispatch<React.SetStateAction<string>>;
@@ -156,6 +157,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isLocked = Boolean(currentOrder?.status && ['Approved', 'Submitted to Vendor'].includes(currentOrder.status) && !isAdmin);
 
+  const activeOrderIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeOrderIdRef.current = currentOrder?.id || null;
+  }, [currentOrder?.id]);
+
   const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
     if (!user || !userData || userData.role === 'viewer') return;
     
@@ -171,7 +178,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     setIsAutoSaving(true);
     try {
-      const orderId = currentOrder?.id || `order_${Date.now()}`;
+      const orderId = currentOrder?.id || activeOrderIdRef.current || `order_${Date.now()}`;
+      activeOrderIdRef.current = orderId; 
       
       const isNewOrder = !currentOrder;
       const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
@@ -267,22 +275,22 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveOrderRef.current = saveOrder;
   });
 
-  const saveArgsRef = useRef({ orderName, academicYear, schoolName });
+  const saveArgsRef = useRef({ orderName, academicYear, schoolName, hasDataToSave: false });
   useEffect(() => {
-    saveArgsRef.current = { orderName, academicYear, schoolName };
+    saveArgsRef.current = { ...saveArgsRef.current, orderName, academicYear, schoolName };
   }, [orderName, academicYear, schoolName]);
 
   // Setup interval save that DOES NOT reset when dependencies change
   useEffect(() => {
     const intervalTimer = setInterval(() => {
-      if (saveOrderRef.current) {
+      if (saveOrderRef.current && saveArgsRef.current.hasDataToSave) {
         const { orderName, academicYear, schoolName } = saveArgsRef.current;
         saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
       }
     }, 30000); // Save every 30 seconds as a fallback
 
     const handleBeforeUnload = () => {
-      if (saveOrderRef.current) {
+      if (saveOrderRef.current && saveArgsRef.current.hasDataToSave) {
         const { orderName, academicYear, schoolName } = saveArgsRef.current;
         saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
       }
@@ -300,6 +308,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (books.length === 0 && !orderName) return;
     
+    // We update a flag in saveArgsRef so interval save knows if it should run
+    saveArgsRef.current.hasDataToSave = true;
+
     const timer = setTimeout(() => {
       if (saveOrderRef.current) saveOrderRef.current(orderName || 'Draft Order', academicYear, schoolName);
     }, 2000); // Debounce for 2 seconds
@@ -329,6 +340,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const clearOrder = () => {
+    setCurrentOrder(null);
+    activeOrderIdRef.current = null;
+    setBooks([]);
+    setCustomSubjects([]);
+    setOrderName('');
+    setSchoolName('');
+    setOrderStatus('Draft');
+    saveArgsRef.current.hasDataToSave = false;
+  };
+
   const visibleBooks = useMemo(() => {
     if (!userData) return books;
     const allowedPrograms = userData.programs || [];
@@ -345,7 +367,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <OrderContext.Provider value={{ 
-      currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, deleteOrder, loadOrder, orders,
+      currentOrder, books, visibleBooks, setBooks, customSubjects, setCustomSubjects, saveOrder, deleteOrder, loadOrder, clearOrder, orders,
       filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, setFilterStock,
       groupBy, setGroupBy, viewMode, setViewMode, isAutoSaving,
       orderName, setOrderName, academicYear, setAcademicYear, schoolName, setSchoolName, lastSavedAt,

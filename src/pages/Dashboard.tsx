@@ -14,7 +14,7 @@ import { FolderOpen } from 'lucide-react';
 
 export default function Dashboard() {
   const { userData, isAdmin } = useAuth();
-  const { isAutoSaving, currentOrder, lastSavedAt, books } = useOrder();
+  const { isAutoSaving, currentOrder, lastSavedAt, books, clearOrder } = useOrder();
   const [activeTab, setActiveTab] = useState<'entry' | 'review' | 'export' | 'orders'>('entry');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
@@ -46,6 +46,19 @@ export default function Dashboard() {
           </div>
           
           <nav className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <button 
+              onClick={() => {
+                const isConfirmed = window.confirm('Are you sure you want to start a new order? This will clear the current form.');
+                if (isConfirmed) {
+                  clearOrder();
+                  setActiveTab('entry');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold transition-all text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            >
+              Start New Order
+            </button>
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
             <button 
               onClick={() => setActiveTab('entry')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'entry' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}
