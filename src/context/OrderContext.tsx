@@ -149,6 +149,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
       
+      // Sort orders descending so newest appear at the top
+      filteredOrders.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      
       setOrders(filteredOrders);
     });
 

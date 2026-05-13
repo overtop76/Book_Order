@@ -35,7 +35,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     try {
       await saveOrder(finalName, academicYear, schoolName);
       if (!orderName) setOrderName('Draft Order');
-      alert('Order saved successfully!');
+      alert('Order saved successfully! It will appear at the top of your Saved Orders list.');
     } catch (error: any) {
       alert(`Failed to save order: ${error.message}`);
     }
