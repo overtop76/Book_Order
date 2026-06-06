@@ -33,7 +33,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     }
     
     try {
-      await saveOrder(finalName, academicYear, schoolName);
+      await saveOrder(finalName, academicYear, schoolName, true, books);
       if (!orderName) setOrderName('Draft Order');
       alert('Order saved successfully! It will appear at the top of your Saved Orders list.');
     } catch (error: any) {
@@ -440,7 +440,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
         </div>
       )}
 
-      {(activeTab === 'entry' || activeTab === 'export') && (
+      {(activeTab === 'entry' || activeTab === 'export' || activeTab === 'review') && (
         <div className="p-4 border-b border-gray-200 bg-amber-50/50">
           <div className="font-bold text-amber-800 text-sm mb-4">Filter & Preview</div>
           <div className="space-y-3">

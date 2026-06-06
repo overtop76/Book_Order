@@ -48,7 +48,7 @@ interface OrderContextType {
   setBooks: React.Dispatch<React.SetStateAction<Book[]>>;
   customSubjects: string[];
   setCustomSubjects: React.Dispatch<React.SetStateAction<string[]>>;
-  saveOrder: (name: string, academicYear: string, schoolName: string) => Promise<void>;
+  saveOrder: (name: string, academicYear: string, schoolName: string, forceSave?: boolean, overrideBooks?: Book[]) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   loadOrder: (orderId: string) => void;
   clearOrder: () => void;
@@ -61,8 +61,8 @@ interface OrderContextType {
   setFilterSubject: React.Dispatch<React.SetStateAction<string>>;
   filterStock: string;
   setFilterStock: React.Dispatch<React.SetStateAction<string>>;
-  groupBy: 'none' | 'grade' | 'subject';
-  setGroupBy: React.Dispatch<React.SetStateAction<'none' | 'grade' | 'subject'>>;
+  groupBy: 'none' | 'grade' | 'subject' | 'stock';
+  setGroupBy: React.Dispatch<React.SetStateAction<'none' | 'grade' | 'subject' | 'stock'>>;
   viewMode: 'order' | 'stock';
   setViewMode: React.Dispatch<React.SetStateAction<'order' | 'stock'>>;
   isAutoSaving: boolean;
@@ -91,7 +91,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [filterGrade, setFilterGrade] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterStock, setFilterStock] = useState('all');
-  const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject'>('none');
+  const [groupBy, setGroupBy] = useState<'none' | 'grade' | 'subject' | 'stock'>('none');
   const [viewMode, setViewMode] = useState<'order' | 'stock'>('order');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [orderName, setOrderName] = useState('');
@@ -174,7 +174,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     activeOrderCreatedByRef.current = currentOrder?.createdBy || null;
   }, [currentOrder?.id]);
 
-  const saveOrder = async (name: string, academicYear: string, schoolName: string) => {
+  const saveOrder = async (name: string, academicYear: string, schoolName: string, forceSave = false, overrideBooks?: Book[]) => {
     if (!user || !userData || userData.role === 'viewer') return;
     
     // Check if the current order is locked for this user
@@ -195,16 +195,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const isNewOrder = !currentOrder && !activeOrderCreatedAtRef.current;
       const isStatusChange = currentOrder && currentOrder.status !== orderStatus;
       
+      // Use overrideBooks if provided, otherwise fallback to standard state books
+      const activeBooks = overrideBooks || books;
+
       // Store creation data on first save to ensure immutability
       if (!activeOrderCreatedAtRef.current) activeOrderCreatedAtRef.current = new Date().toISOString();
       if (!activeOrderCreatedByRef.current) activeOrderCreatedByRef.current = user.uid;
 
       // Check if there are meaningful changes (ignoring timestamps)
-      const hasMeaningfulChanges = isNewOrder || isStatusChange || !currentOrder || 
+      const hasMeaningfulChanges = forceSave || isNewOrder || isStatusChange || !currentOrder || 
         currentOrder.name !== name || 
         currentOrder.academicYear !== academicYear ||
         currentOrder.schoolName !== schoolName ||
-        JSON.stringify(currentOrder.books) !== JSON.stringify(books) ||
+        JSON.stringify(currentOrder.books) !== JSON.stringify(activeBooks) ||
         JSON.stringify(currentOrder.customSubjects) !== JSON.stringify(customSubjects);
 
       const newOrder: any = {
@@ -213,8 +216,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         academicYear: academicYear || '',
         schoolName: schoolName || '',
         status: orderStatus || 'Draft',
-        books: books || [],
+        books: activeBooks || [],
         customSubjects: customSubjects || [],
+
         createdBy: activeOrderCreatedByRef.current,
         createdAt: activeOrderCreatedAtRef.current,
         updatedAt: hasMeaningfulChanges && !isNewOrder ? new Date().toISOString() : (currentOrder?.updatedAt || activeOrderCreatedAtRef.current),

@@ -179,7 +179,11 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
 
     const groups: Record<string, Book[]> = {};
     filteredBooks.forEach(b => {
-      const key = groupBy === 'grade' ? b.grade : b.subject;
+      let key = '';
+      if (groupBy === 'grade') key = b.grade || 'Unknown';
+      else if (groupBy === 'subject') key = b.subject || 'Unknown';
+      else if (groupBy === 'stock') key = (Number(b.currentStock) || 0) > 0 ? 'In Stock' : 'Out of Stock';
+      
       if (!groups[key]) groups[key] = [];
       groups[key].push(b);
     });
@@ -188,7 +192,7 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
       <React.Fragment key={key}>
         <tr className="bg-gray-100 border-y border-gray-200">
           <td colSpan={(!isViewer && !isLocked && activeTab === 'entry') ? (viewMode === 'stock' ? 9 : 10) : (viewMode === 'stock' ? 7 : 8)} className="px-4 py-2 text-xs font-bold text-gray-700 uppercase">
-            {groupBy === 'grade' ? 'Grade: ' : 'Subject: '} {key} ({groups[key].length} books)
+            {groupBy === 'grade' ? 'Grade: ' : groupBy === 'subject' ? 'Subject: ' : 'Stock: '} {key} ({groups[key].length} books)
           </td>
         </tr>
         {groups[key].map(renderBookRow)}
@@ -223,17 +227,41 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
       </div>
 
       {/* Toolbar */}
-      <div className="px-4 py-3 bg-white border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="px-4 py-3 bg-white border-b border-gray-200 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setViewMode('order')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${viewMode === 'order' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}>Order View</button>
             <button onClick={() => setViewMode('stock')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${viewMode === 'stock' ? 'bg-white shadow-sm text-green-700' : 'text-gray-500 hover:text-gray-700'}`}>Stock View</button>
           </div>
-          <div className="h-6 w-px bg-gray-300"></div>
+          <div className="h-6 w-px bg-gray-300 hidden sm:block"></div>
           <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setGroupBy('none')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'none' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>List</button>
             <button onClick={() => setGroupBy('grade')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'grade' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>By Grade</button>
             <button onClick={() => setGroupBy('subject')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'subject' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>By Subject</button>
+            <button onClick={() => setGroupBy('stock')} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${groupBy === 'stock' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}>By Stock</button>
+          </div>
+          <div className="h-6 w-px bg-gray-300 hidden sm:block"></div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterGrade(''); setFilterSubject(''); }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-600 focus:ring-1 focus:ring-blue-500 min-w-[110px] max-w-[140px]">
+              <option value="">All Programs</option>
+              {allowedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-600 focus:ring-1 focus:ring-blue-500 min-w-[100px] max-w-[120px]">
+              <option value="">All Grades</option>
+              {getFilterGrades().map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-600 focus:ring-1 focus:ring-blue-500 min-w-[110px] max-w-[140px]">
+              <option value="">All Subjects</option>
+              {getFilterSubjects().map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterStock} onChange={e => setFilterStock(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-600 focus:ring-1 focus:ring-blue-500 min-w-[100px] max-w-[120px]">
+              <option value="all">All Stock</option>
+              <option value="in-stock">In Stock (&gt; 0)</option>
+              <option value="out-of-stock">Out Stock (0)</option>
+            </select>
+            {(filterProgram || filterGrade || filterSubject || filterStock !== 'all') && (
+               <button onClick={() => { setFilterProgram(''); setFilterGrade(''); setFilterSubject(''); setFilterStock('all'); }} className="text-xs text-red-500 hover:text-red-700 px-2 font-medium">Clear Filters</button>
+            )}
           </div>
         </div>
         

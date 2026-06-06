@@ -296,7 +296,7 @@ export default function LeftSidebar() {
             <div className="text-xs font-bold text-blue-900">Enrollment & Projection</div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Students</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Next Year Students</label>
                 <input type="number" value={students || ''} onChange={e => setStudents(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500" placeholder="0" />
               </div>
               <div>
@@ -305,6 +305,7 @@ export default function LeftSidebar() {
                   <option value={0}>0%</option>
                   <option value={5}>5%</option>
                   <option value={10}>10%</option>
+                  <option value={15}>15%</option>
                   <option value={20}>20%</option>
                   <option value={25}>25%</option>
                 </select>

@@ -82,13 +82,18 @@ export default function ImportPreviewModal({ isOpen, onClose, matches, nonDuplic
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Review Import</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Review the imported data before saving. We found {matches.length} duplicates and {nonDuplicates.length} new entries.
-          </p>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-start bg-white">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Review Import</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Review the imported data before saving. We found {matches.length} duplicates and {nonDuplicates.length} new entries.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -189,16 +194,16 @@ export default function ImportPreviewModal({ isOpen, onClose, matches, nonDuplic
           )}
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 rounded-b-xl mt-auto">
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel Import
           </button>
           <button
             onClick={handleConfirm}
-            className="px-6 py-2 bg-blue-600 text-white font-medium hover:bg-blue-700 rounded-lg transition shadow-sm"
+            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
           >
             Confirm Import
           </button>
