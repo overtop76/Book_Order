@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useOrder, Book } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, Copy, Edit2 } from 'lucide-react';
+import { Trash2, Copy, Edit2, Zap } from 'lucide-react';
 import EditBookModal from './EditBookModal';
+import BulkEditModal from './BulkEditModal';
 
 export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
   const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, setFilterStock, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
 
   const CURRICULA: Record<string, { grades: string[], subjects: string[] }> = {
     American: { grades: ['KG1','KG2','G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12'], subjects: ['English','Math','Science','French','German','Spanish','Humanities','Social Studies'] },
@@ -266,13 +268,22 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
         </div>
         
         {!isViewer && !isLocked && selectedBooks.length > 0 && activeTab === 'entry' && (
-          <button 
-            onClick={handleDeleteSelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-semibold transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete Selected ({selectedBooks.length})
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsBulkEditOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-semibold transition"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Bulk Edit ({selectedBooks.length})
+            </button>
+            <button 
+              onClick={handleDeleteSelected}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-semibold transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Selected
+            </button>
+          </div>
         )}
       </div>
 
@@ -355,6 +366,14 @@ export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry'
 
       {editingBook && (
         <EditBookModal book={editingBook} onClose={() => setEditingBook(null)} />
+      )}
+      
+      {isBulkEditOpen && (
+        <BulkEditModal 
+          selectedBookIds={selectedBooks} 
+          onClose={() => setIsBulkEditOpen(false)} 
+          clearSelection={() => setSelectedBooks([])}
+        />
       )}
     </div>
   );
