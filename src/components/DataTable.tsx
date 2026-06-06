@@ -5,7 +5,7 @@ import { Trash2, Copy, Edit2 } from 'lucide-react';
 import EditBookModal from './EditBookModal';
 
 export default function DataTable({ activeTab = 'entry' }: { activeTab?: 'entry' | 'review' | 'export' }) {
-  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
+  const { books, visibleBooks, setBooks, filterProgram, setFilterProgram, filterGrade, setFilterGrade, filterSubject, setFilterSubject, filterStock, setFilterStock, groupBy, setGroupBy, viewMode, setViewMode, isLocked } = useOrder();
   const { userData, isViewer } = useAuth();
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
