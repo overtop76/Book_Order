@@ -109,7 +109,7 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
 
     const allData = viewMode === 'stock' 
       ? [...headerData, colHeaders, ...dataRows, totalRow]
-      : [...headerData, colHeaders, ...dataRows, totalRow, [], ['Abbreviations: HC = Hard Copy, D = Digital, B = Both | SC = Student Copy, TE = Teacher Edition, RM = Resource Material']];
+      : [...headerData, colHeaders, ...dataRows, totalRow, [], ['Abbreviations: HC = Hard Copy, D = Digital, B = Both, Bkl = Booklet | SC = Student Copy, TE = Teacher Edition, RM = Resource Material']];
     const ws = XLSX.utils.aoa_to_sheet(allData);
 
     ws['!cols'] = viewMode === 'stock'
@@ -198,9 +198,14 @@ export default function RightSidebar({ activeTab = 'entry' }: { activeTab?: 'ent
     });
 
     if (viewMode !== 'stock') {
+      let finalY = (doc as any).lastAutoTable.finalY;
+      if (finalY + 10 > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        finalY = margin;
+      }
       doc.setFontSize(7);
       doc.setTextColor(100);
-      doc.text('Abbreviations: HC = Hard Copy, D = Digital, B = Both, Bkl = Booklet | SC = Student Copy, TE = Teacher Edition, RM = Resource Material', margin, (doc as any).lastAutoTable.finalY + 10);
+      doc.text('Abbreviations: HC = Hard Copy, D = Digital, B = Both, Bkl = Booklet | SC = Student Copy, TE = Teacher Edition, RM = Resource Material', margin, finalY + 10);
     }
 
     doc.save(getExportFileName('pdf'));
